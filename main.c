@@ -40,6 +40,9 @@ int main()
     err = npe_hci_library_send_command_bluetooth_info_set_manufacturer_name("North Pole Engineering");
     assert(err == NPE_GEM_RESPONSE_OK);
 
+    err = npe_hci_library_send_command_bluetooth_info_set_model_number("1234");
+    assert(err == NPE_GEM_RESPONSE_OK);
+
     // wf_gem_hci_manager_gymconnect_set_fe_type(WF_GEM_HCI_GYMCONNECT_FITNESS_EQUIPMENT_TYPE_TREADMILL);
     // waitForResponse(WF_GEM_HCI_MSG_CLASS_GYM_CONNECT, WF_GEM_HCI_COMMAND_ID_GYM_CONNECT_SET_FE_TYPE);
     // fflush(stdout);

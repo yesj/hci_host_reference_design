@@ -66,6 +66,15 @@ uint32_t npe_hci_library_send_command_bluetooth_info_set_manufacturer_name(utf8_
     return(npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received));
 }
 
+uint32_t npe_hci_library_send_command_bluetooth_info_set_model_number(utf8_data_t* model_number)
+{
+    wf_gem_hci_manager_send_command_bluetooth_info_set_model_number(model_number);
+
+    responseWaitingFor.message_class_id = WF_GEM_HCI_MSG_CLASS_BT_DEVICE_INFO;
+    responseWaitingFor.message_id = WF_GEM_HCI_COMMAND_ID_BT_DEVICE_INFO_SET_MODEL_NUM;
+    return(npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received));
+}
+
 void wf_gem_hci_comms_on_send_byte(uint8_t tx_byte)
 {
     uint32_t err = npe_serial_interface_send_byte(tx_byte);
@@ -84,3 +93,4 @@ void wf_gem_hci_comms_on_message_received(wf_gem_hci_comms_message_t* message)
     npe_serial_interface_signal_response(npe_gem_hci_library_process_received_msg, (void*)message, sizeof(wf_gem_hci_comms_message_t));
 
 }
+
