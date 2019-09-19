@@ -64,6 +64,9 @@ local.properties
 # Eclipse Core
 .project
 
+### MS Visual Code ###
+.code-workspace
+
 # JDT-specific (Eclipse Java Development Tools)
 .classpath
 
