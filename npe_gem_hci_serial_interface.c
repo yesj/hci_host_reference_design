@@ -1,20 +1,26 @@
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <sys/time.h>
+#include <pthread.h> 
+#include <stdbool.h>
 #include <libserialport.h>
+#include "npe_error_code.h"
 #include "wf_gem_hci_comms.h"
 #include "wf_gem_hci_manager_gymconnect.h"
 #include "npe_gem_hci_serial_interface.h"
-#include <pthread.h> 
 
 
-// Thread Defines
+
+// Threading local variables. 
 static pthread_mutex_t rxMutex;
 static pthread_cond_t rxCond;
 
+// Libserialport local variables.
 static struct sp_port *port;
 
+// static callbacks 
 static parse_bytes_t m_got_data_cb;
 
 void npe_serial_interface_list_ports(void) {
@@ -69,55 +75,53 @@ static void* npe_serial_interface_receive_thread(void *vargp)
     return NULL; 
 } 
 
-static void npe_serial_interface_connect_to_port(const char* p_port)
+static uint32_t npe_serial_interface_connect_to_port(const char* p_port)
 {
-    printf("Opening port.");
+    uint32_t err_code = NPE_GEM_RESPONSE_OK;
+
     int err = sp_get_port_by_name(p_port, &port);
     if(err == SP_OK)
     {
-        printf("Open Port.\n");
         err = sp_open(port, SP_MODE_READ_WRITE);
 
         if(err == SP_OK)
         {
-            printf("Set Baud Rate.\n");
-            sp_set_baudrate(port,115200);
+            err = sp_set_baudrate(port,115200);
+            if(err != SP_OK)
+                err_code = NPE_GEM_RESPONSE_SERIAL_OPEN_FAIL;
         }
         else
         {
-            printf("Unable to open port\n");
+            err_code = NPE_GEM_RESPONSE_SERIAL_OPEN_FAIL;
         }   
     }
     else
     {
-        printf("Error finding serial device.\n");
+        err_code = NPE_GEM_RESPONSE_SERIAL_OPEN_FAIL;
     }
-    fflush(stdout);
+    return (err_code);
 }
 
 void npe_serial_interface_signal_response(handle_recieved_message_t handle_recieved_message_cb, void* p_arg, uint32_t size)
 {
-    //printf("Recieved message Event Flags %d, Class Id %d, Message Id %d, Length %d\n", message->message_event_flag,
-    //    message->message_class_id, message->message_id, message->data_length);
-    //wf_gem_hci_manager_process_recevied_message(message);
     pthread_mutex_lock(&rxMutex);
 
     if(handle_recieved_message_cb)
         handle_recieved_message_cb(p_arg, size);
 
     pthread_cond_signal(&rxCond);
-    //printf("Signal Response\n");
     pthread_mutex_unlock(&rxMutex);
 }
 
 
-int npe_serial_interface_wait_for_response(check_if_wait_condition_met_cb_t check_if_wait_condition_met_cb)
+uint32_t npe_serial_interface_wait_for_response(check_if_wait_condition_met_cb_t check_if_wait_condition_met_cb)
 {
+    uint32_t error_code = NPE_GEM_RESPONSE_RETRIES_EXHAUSTED;
     uint8_t waitCount = 10; // Wait a maximum 10 times to get the correct response. 
     int timeInMs = 500;
     struct timeval tv;
     struct timespec ts;
-    int res = 1;
+    int res;
 
     gettimeofday(&tv, NULL);
     ts.tv_sec = time(NULL) + timeInMs / 1000;
@@ -125,75 +129,70 @@ int npe_serial_interface_wait_for_response(check_if_wait_condition_met_cb_t chec
     ts.tv_sec += ts.tv_nsec / (1000 * 1000 * 1000);
     ts.tv_nsec %= (1000 * 1000 * 1000);
 
-   
-        // TODO: Time out.
+    // TODO: Time out.
     pthread_mutex_lock(&rxMutex);
-    printf("Wait\n");
     // Check if this is the response we are watining for 
-
     while(waitCount > 0)
     {
         res = pthread_cond_timedwait(&rxCond, &rxMutex, &ts);
+        if(res == 0)
+        {
+            error_code = NPE_GEM_RESPONSE_OK;
+        }
+        else if(res == ETIMEDOUT)
+        {
+            error_code = NPE_GEM_RESPONSE_TIMEOUT_OUT;
+        }           
+        else
+        {
+            // Otherwise something more serious went wrong. 
+            assert(false);
+        }
+    
         if(check_if_wait_condition_met_cb)
             if(check_if_wait_condition_met_cb(res))
                 break;
-        printf("Waiting %d", res);
-        fflush(stdout);
-
-
-        // if (res == 0)
-        // {
-        //     if(receivedMessage.message_class_id == classId && receivedMessage.message_id == mesgId)
-        //     {
-        //         break;
-        //     }
-        //     else
-        //     {
-        //         waitCount--;       
-        //     }
-            
-        //     printf("Got response\n");
-        // }
-        // else if (res == ETIMEDOUT)
-        // {
-        //     printf("Timeout");
-        //     break;
-        // }    
     }
     pthread_mutex_unlock(&rxMutex);
-    return res;
+    return error_code;
 }
 
-void npe_serial_interface_send_byte(uint8_t tx_byte)
+uint32_t npe_serial_interface_send_byte(uint8_t tx_byte)
 {
+    uint32_t error_code = NPE_GEM_RESPONSE_OK;
     uint8_t buffer[1];
     buffer[0] = tx_byte;
 
     int bytesWrittenOrError = sp_blocking_write(port, buffer, 1, 0);
-    if(bytesWrittenOrError > 0)
+    if(bytesWrittenOrError <= 0)
     {
-        //printf("Sent byte %x\n", tx_byte);
+        error_code = NPE_GEM_RESPONSE_UNABLE_TO_WRITE;
     }
-	else
-    {
-        printf("Could not send byte Err: %d byte: %x\n", bytesWrittenOrError, tx_byte);
-    }
+	return(error_code);
     
 }
    
-void npe_serial_interface_init(const char* p_port, parse_bytes_t parse_bytes_cb)
+uint32_t npe_serial_interface_init(const char* p_port, parse_bytes_t parse_bytes_cb)
 {
+    uint32_t err_code;
     pthread_t thread_id; 
     if(parse_bytes_cb)
     {
         m_got_data_cb = parse_bytes_cb;
     } 
 
-    npe_serial_interface_connect_to_port(p_port);
-    
-    pthread_create(&thread_id, NULL, npe_serial_interface_receive_thread, NULL);
-    pthread_mutex_init(&rxMutex, NULL);
-    pthread_cond_init (&rxCond, NULL);
+    err_code = npe_serial_interface_connect_to_port(p_port);
+    if(err_code == NPE_GEM_RESPONSE_OK)
+    {
+        int res = pthread_create(&thread_id, NULL, npe_serial_interface_receive_thread, NULL);
+        assert(res == 0);
+        res = pthread_mutex_init(&rxMutex, NULL);
+        assert(res == 0);
+        res = pthread_cond_init (&rxCond, NULL);
+        assert(res == 0);
+    }
+
+    return(err_code);
     //pthread_join(thread_id, NULL);
 }
 
