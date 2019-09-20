@@ -33,14 +33,28 @@ int main()
     }
 
     // Set Bluetooth name. 
-    utf8_data_t* bluetoothName = "GEM Reference Design"; 
-    err = npe_hci_library_send_command_bluetooth_config_set_device_name(bluetoothName);
+    err = npe_hci_library_send_command_bluetooth_config_set_device_name("GEM Reference Design");
     assert(err == NPE_GEM_RESPONSE_OK);
 
     err = npe_hci_library_send_command_bluetooth_info_set_manufacturer_name("North Pole Engineering");
     assert(err == NPE_GEM_RESPONSE_OK);
 
-    err = npe_hci_library_send_command_bluetooth_info_set_model_number("1234");
+    err = npe_hci_library_send_command_bluetooth_info_set_model_number("1");
+    assert(err == NPE_GEM_RESPONSE_OK);
+
+    err = npe_hci_library_send_command_bluetooth_info_set_serial_number("1234");
+    assert(err == NPE_GEM_RESPONSE_OK);
+
+    err = npe_hci_library_send_command_bluetooth_info_set_hardware_rev("1");
+    assert(err == NPE_GEM_RESPONSE_OK);
+
+    err = npe_hci_library_send_command_bluetooth_info_set_firmware_rev("2");
+    assert(err == NPE_GEM_RESPONSE_OK);
+
+    err = npe_hci_library_send_command_bluetooth_info_set_battery_included(WF_GEM_HCI_BLUETOOTH_BATTERY_SERVICE_NOT_INCLUDE);
+    assert(err == NPE_GEM_RESPONSE_OK);
+
+    err = npe_hci_library_send_command_gymconnect_set_supported_equipment_control_features(0);
     assert(err == NPE_GEM_RESPONSE_OK);
 
     // wf_gem_hci_manager_gymconnect_set_fe_type(WF_GEM_HCI_GYMCONNECT_FITNESS_EQUIPMENT_TYPE_TREADMILL);

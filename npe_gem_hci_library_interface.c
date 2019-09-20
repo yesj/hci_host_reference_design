@@ -5,6 +5,7 @@
 #include "npe_error_code.h"
 #include "wf_gem_hci_comms.h"
 #include "wf_gem_hci_manager.h"
+#include "wf_gem_hci_manager_gymconnect.h"
 #include "npe_gem_hci_serial_interface.h"
 
 wf_gem_hci_comms_message_t receivedMessage;
@@ -66,12 +67,58 @@ uint32_t npe_hci_library_send_command_bluetooth_info_set_manufacturer_name(utf8_
     return(npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received));
 }
 
+
+
 uint32_t npe_hci_library_send_command_bluetooth_info_set_model_number(utf8_data_t* model_number)
 {
     wf_gem_hci_manager_send_command_bluetooth_info_set_model_number(model_number);
 
     responseWaitingFor.message_class_id = WF_GEM_HCI_MSG_CLASS_BT_DEVICE_INFO;
     responseWaitingFor.message_id = WF_GEM_HCI_COMMAND_ID_BT_DEVICE_INFO_SET_MODEL_NUM;
+    return(npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received));
+}
+
+uint32_t npe_hci_library_send_command_bluetooth_info_set_serial_number(utf8_data_t* serial_number)
+{
+    wf_gem_hci_manager_send_command_bluetooth_info_set_serial_number(serial_number);
+
+    responseWaitingFor.message_class_id = WF_GEM_HCI_MSG_CLASS_BT_DEVICE_INFO;
+    responseWaitingFor.message_id = WF_GEM_HCI_COMMAND_ID_BT_DEVICE_INFO_SET_SERIAL_NUM;
+    return(npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received));
+}
+
+uint32_t npe_hci_library_send_command_bluetooth_info_set_hardware_rev(utf8_data_t* hardware_revision)
+{
+    wf_gem_hci_manager_send_command_bluetooth_info_set_hardware_rev(hardware_revision);
+
+    responseWaitingFor.message_class_id = WF_GEM_HCI_MSG_CLASS_BT_DEVICE_INFO;
+    responseWaitingFor.message_id = WF_GEM_HCI_COMMAND_ID_BT_DEVICE_INFO_SET_HW_REV;
+    return(npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received));
+}
+uint32_t npe_hci_library_send_command_bluetooth_info_set_firmware_rev(utf8_data_t* firmware_revision)
+{
+    wf_gem_hci_manager_send_command_bluetooth_info_set_firmware_rev(firmware_revision);
+
+    responseWaitingFor.message_class_id = WF_GEM_HCI_MSG_CLASS_BT_DEVICE_INFO;
+    responseWaitingFor.message_id = WF_GEM_HCI_COMMAND_ID_BT_DEVICE_INFO_SET_FW_REV;
+    return(npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received));
+}
+
+uint32_t npe_hci_library_send_command_bluetooth_info_set_battery_included(uint8_t battery_included)
+{
+    wf_gem_hci_manager_send_command_bluetooth_info_set_battery_included(battery_included);
+
+    responseWaitingFor.message_class_id = WF_GEM_HCI_MSG_CLASS_BT_DEVICE_INFO;
+    responseWaitingFor.message_id = WF_GEM_HCI_COMMAND_ID_BT_DEVICE_INFO_SET_BATT_SERV_INC;
+    return(npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received));
+}
+
+uint32_t npe_hci_library_send_command_gymconnect_set_supported_equipment_control_features(uint32_t equipment_control_field_identifier)
+{
+    wf_gem_hci_manager_gymconnect_set_supported_equipment_control_features(equipment_control_field_identifier);
+
+    responseWaitingFor.message_class_id = WF_GEM_HCI_MSG_CLASS_GYM_CONNECT;
+    responseWaitingFor.message_id = WF_GEM_HCI_COMMAND_ID_GYM_CONNECT_SET_FE_CONTROL_FEATURES;
     return(npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received));
 }
 
