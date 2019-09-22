@@ -1,6 +1,16 @@
-#ifndef __NPE_GEM_HCI_SERIAL_INTERFACE__
-#define __NPE_GEM_HCI_SERIAL_INTERFACE__
+#ifndef __NPE_GEM_HCI_LIBRARY_INTERFACE__
+#define __NPE_GEM_HCI_LIBRARY_INTERFACE__
 #include <stdint.h>
+
+#include "wf_gem_hci_manager_gymconnect.h"
+
+typedef struct npe_gem_hci_library_interface
+{
+    uint8_t error_code;
+}standard_response_t;
+
+
+
 
 uint32_t npe_gem_hci_library_interface_init(void);
 uint32_t npe_hci_library_send_ping(void);
@@ -12,4 +22,14 @@ uint32_t npe_hci_library_send_command_bluetooth_info_set_hardware_rev(utf8_data_
 uint32_t npe_hci_library_send_command_bluetooth_info_set_firmware_rev(utf8_data_t* firmware_revision);
 uint32_t npe_hci_library_send_command_bluetooth_info_set_battery_included(uint8_t battery_included);
 uint32_t npe_hci_library_send_command_gymconnect_set_supported_equipment_control_features(uint32_t equipment_control_field_identifier);
+uint32_t npe_hci_library_send_command_ant_config_set_hardware_version(uint8_t hardware_version);
+uint32_t npe_hci_library_send_command_ant_config_set_model_number(uint16_t model_number);
+uint32_t npe_hci_library_send_command_ant_config_set_software_version(uint8_t main, uint8_t supplemental);
+uint32_t npe_hci_library_send_command_ant_config_set_serial_number(uint32_t serial_number);
+uint32_t npe_hci_library_send_command_gymconnect_set_fe_type(wf_gem_hci_gymconnect_fitness_equipment_type_e fe_type);
+uint32_t npe_hci_library_send_command_gymconnect_set_fe_state(wf_gem_hci_gymconnect_fitness_equipment_state_e fe_state, standard_response_t* p_fe_state_response);
+uint32_t npe_hci_library_send_command_bluetooth_control_start_advertising(standard_response_t* p_advertising_start_response);
+uint32_t npe_hci_library_send_command_bluetooth_control_stop_advertising(standard_response_t* p_advertising_stop_response);
+uint32_t npe_hci_library_send_command_gymconnect_perform_workout_data_update(standard_response_t* p_update_response);
+
 #endif

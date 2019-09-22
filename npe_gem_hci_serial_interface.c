@@ -236,14 +236,8 @@ void wf_gem_hci_manager_on_event_system_shutdown(void)
 // +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
 // 		Bluetooth Control Command Responses, Events
 // +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
-void wf_gem_hci_manager_on_command_response_bluetooth_control_start_advertising(uint8_t error_code)
-{   
-    printf("wf_gem_hci_manager_on_command_response_bluetooth_control_start_advertising\n");
-}
-void wf_gem_hci_manager_on_command_response_bluetooth_control_stop_advertising(uint8_t error_code)
-{
-    printf("wf_gem_hci_manager_on_command_response_bluetooth_control_stop_advertising\n");
-}
+
+
 
 void wf_gem_hci_manager_on_command_response_bluetooth_control_get_bluetooth_state(wf_gem_hci_bluetooth_state_e bluetooth_state)
 {
@@ -253,6 +247,7 @@ void wf_gem_hci_manager_on_command_response_bluetooth_control_get_bluetooth_stat
 void wf_gem_hci_manager_on_event_bluetooth_control_advertising_timed_out(void)
 {
     printf("wf_gem_hci_manager_on_event_bluetooth_control_advertising_timed_out\n");
+    fflush(stdout);
 }
 void wf_gem_hci_manager_on_event_bluetooth_control_connected(void)
 {
@@ -281,13 +276,13 @@ void wf_gem_hci_manager_on_command_response_bluetooth_config_set_device_name(uin
 
 void wf_gem_hci_manager_on_begin_retry_timer(uint16_t cmd_timeout_ms)
 {
-    printf("wf_gem_hci_manager_on_begin_retry_timer\n");
+    //printf("wf_gem_hci_manager_on_begin_retry_timer\n");
 }
 
 // cancel/stop the timer started in wf_gem_hci_manager_on_begin_retry_timer()
 void wf_gem_hci_manager_on_cancel_retry_timer(void)
 {
-    printf("wf_gem_hci_manwf_gem_hci_manager_on_cancel_retry_timerager_gymconnect_on_command_send_failure\n");
+    //printf("wf_gem_hci_manager_on_cancel_retry_timer\n");
 }
 
 
@@ -333,7 +328,7 @@ void wf_gem_hci_manager_gymconnect_on_command_response_set_fe_program_name(uint8
 
 void wf_gem_hci_manager_gymconnect_on_workout_data_update_complete(uint8_t error_code)
 {
-    printf("wf_gem_hci_manager_gymconnect_on_workout_data_update_complete\n");
+    //printf("wf_gem_hci_manager_gymconnect_on_workout_data_update_complete\n");
 }
 
 void wf_gem_hci_manager_gymconnecton_event_heart_rate_value_received(uint16_t heart_rate_value)

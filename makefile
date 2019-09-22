@@ -31,6 +31,7 @@ SRCS = \
 	main.c \
 	npe_gem_hci_serial_interface.c \
 	npe_gem_hci_library_interface.c \
+	npe_gem_hci_data_manager.c \
 	$(HCI_LIB_DIR)/wf_gem_hci_comms.c \
 	$(HCI_LIB_DIR)/wf_gem_hci_manager.c \
 	$(HCI_LIB_DIR)/wf_gem_hci_manager_bootloader.c \
