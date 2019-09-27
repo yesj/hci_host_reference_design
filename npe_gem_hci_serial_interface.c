@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <unistd.h>
 #include <sys/time.h>
 #include <pthread.h> 
 #include <stdbool.h>
@@ -11,17 +12,23 @@
 #include "wf_gem_hci_manager_gymconnect.h"
 #include "npe_gem_hci_serial_interface.h"
 
-
+#define NPE_HCI_TX_FLAG_SEND_MSG    ((uint32_t) 0x00000001)
+#define NPE_HCI_TX_FLAG_TIMEOUT     ((uint32_t) 0x00000002)
 
 // Threading local variables. 
-static pthread_mutex_t rxMutex;
-static pthread_cond_t rxCond;
+static pthread_mutex_t rxMutex, txMutex;
+static pthread_cond_t rxCond, txCond;
+static pthread_t rx_thread_id, tx_thread_id, timer_thread_id; 
+
+static uint32_t m_tx_event; 
 
 // Libserialport local variables.
 static struct sp_port *port;
 
 // static callbacks 
 static parse_bytes_t m_got_data_cb;
+static transmit_message_t m_tx_msg_cb;
+static timeout_t m_timeout_cb;
 
 void npe_serial_interface_list_ports(void) {
     int i;
@@ -40,6 +47,80 @@ void npe_serial_interface_list_ports(void) {
         printf("No serial devices detected\n");
     }
     printf("\n");
+}
+
+static void* npe_serial_interface_timer_thread(void *vargp)
+{
+    while(1)
+    {
+        sleep(1);
+        
+        pthread_mutex_lock(&txMutex);
+
+        m_tx_event |= NPE_HCI_TX_FLAG_TIMEOUT;
+
+        pthread_cond_signal(&txCond);
+        pthread_mutex_unlock(&txMutex);
+
+    }
+    return NULL;
+}
+
+bool npe_serial_transmit_lock(void)
+{
+    // Check if the calling function is
+    // on the same thread as we are. If yes
+    // then no need to put it on the thread. 
+    if(tx_thread_id == pthread_self())
+    {
+        pthread_mutex_unlock(&txMutex);
+         return(false);
+    }
+    pthread_mutex_lock(&txMutex);
+    return true;
+}
+
+void npe_serial_transmit_message_and_unlock(void)
+{
+    m_tx_event |= NPE_HCI_TX_FLAG_SEND_MSG;
+
+    pthread_cond_signal(&txCond);
+    pthread_mutex_unlock(&txMutex);
+}
+
+
+static void* npe_serial_interface_transmit_thread(void *vargp) 
+{   
+
+    while(1)
+    {
+        pthread_mutex_lock(&txMutex);
+        // Check if this is the response we are watining for 
+        pthread_cond_wait(&txCond, &txMutex);
+
+        
+        while(m_tx_event)
+        {
+            if(m_tx_event & NPE_HCI_TX_FLAG_SEND_MSG)
+            {
+                m_tx_event &= ~NPE_HCI_TX_FLAG_SEND_MSG;
+                
+                if(m_tx_msg_cb)
+                    m_tx_msg_cb();
+            }
+            if(m_tx_event & NPE_HCI_TX_FLAG_TIMEOUT)
+            {
+                m_tx_event &= ~NPE_HCI_TX_FLAG_TIMEOUT;
+
+                if(m_timeout_cb)
+                    m_timeout_cb();
+            }
+        }
+
+        pthread_mutex_unlock(&txMutex);
+    }
+        
+    return NULL;
 }
 
 // A normal C function that is executed as a thread  
@@ -131,10 +212,12 @@ uint32_t npe_serial_interface_wait_for_response(check_if_wait_condition_met_cb_t
 
     // TODO: Time out.
     pthread_mutex_lock(&rxMutex);
+    
     // Check if this is the response we are watining for 
-    while(waitCount > 0)
+    while(waitCount-- > 0)
     {
         res = pthread_cond_timedwait(&rxCond, &rxMutex, &ts);
+
         if(res == 0)
         {
             error_code = NPE_GEM_RESPONSE_OK;
@@ -172,24 +255,50 @@ uint32_t npe_serial_interface_send_byte(uint8_t tx_byte)
     
 }
    
-uint32_t npe_serial_interface_init(const char* p_port, parse_bytes_t parse_bytes_cb)
+uint32_t npe_serial_interface_init(const char* p_port, parse_bytes_t parse_bytes_cb, transmit_message_t tx_msg_cb, timeout_t timeout_cb)
 {
     uint32_t err_code;
-    pthread_t thread_id; 
+
     if(parse_bytes_cb)
     {
         m_got_data_cb = parse_bytes_cb;
     } 
 
+    if(tx_msg_cb)
+    {
+        m_tx_msg_cb = tx_msg_cb;
+    }
+    if(timeout_cb)
+    {
+        m_timeout_cb = timeout_cb;
+    }
+
+    
+
     err_code = npe_serial_interface_connect_to_port(p_port);
     if(err_code == NPE_GEM_RESPONSE_OK)
     {
-        int res = pthread_create(&thread_id, NULL, npe_serial_interface_receive_thread, NULL);
+        // Receive thread setup
+        int res = pthread_create(&rx_thread_id, NULL, npe_serial_interface_receive_thread, NULL);
         assert(res == 0);
         res = pthread_mutex_init(&rxMutex, NULL);
         assert(res == 0);
         res = pthread_cond_init (&rxCond, NULL);
         assert(res == 0);
+
+        // Transmit thread
+        res = pthread_create(&tx_thread_id, NULL, npe_serial_interface_transmit_thread, NULL);
+        assert(res == 0);
+        res = pthread_mutex_init(&txMutex, NULL);
+        assert(res == 0);
+        res = pthread_cond_init (&txCond, NULL);
+        assert(res == 0);
+
+        // Timer thread (for 1Hz timer)
+        res = pthread_create(&timer_thread_id, NULL, npe_serial_interface_timer_thread, NULL);
+        assert(res == 0);
+
+
     }
 
     return(err_code);
@@ -236,9 +345,6 @@ void wf_gem_hci_manager_on_event_system_shutdown(void)
 // +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
 // 		Bluetooth Control Command Responses, Events
 // +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
-
-
-
 void wf_gem_hci_manager_on_command_response_bluetooth_control_get_bluetooth_state(wf_gem_hci_bluetooth_state_e bluetooth_state)
 {
     printf("wf_gem_hci_manager_on_command_response_bluetooth_control_get_bluetooth_state\n");
@@ -285,14 +391,11 @@ void wf_gem_hci_manager_on_cancel_retry_timer(void)
     //printf("wf_gem_hci_manager_on_cancel_retry_timer\n");
 }
 
-
 // This callback is called if a command message can not be sent and all retries have failed.
 void wf_gem_hci_manager_on_command_send_failure(wf_gem_hci_comms_message_t* message)
 {
     printf("wf_gem_hci_manager_on_command_send_failure\n");
 }
-
-
 
 void wf_gem_hci_manager_gymconnect_on_command_send_failure(wf_gem_hci_comms_message_t *message)
 {

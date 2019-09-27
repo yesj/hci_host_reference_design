@@ -4,6 +4,8 @@
 
 #include "wf_gem_hci_manager_gymconnect.h"
 
+typedef void (*one_second_timeout_t)(void);
+
 typedef struct npe_gem_hci_library_interface
 {
     uint8_t error_code;
@@ -12,7 +14,7 @@ typedef struct npe_gem_hci_library_interface
 
 
 
-uint32_t npe_gem_hci_library_interface_init(void);
+uint32_t npe_gem_hci_library_interface_init(one_second_timeout_t one_second_timeout_cb);
 uint32_t npe_hci_library_send_ping(void);
 uint32_t npe_hci_library_send_command_bluetooth_config_set_device_name(utf8_data_t* bluetoothName);
 uint32_t npe_hci_library_send_command_bluetooth_info_set_manufacturer_name(utf8_data_t* manufacturer_name);

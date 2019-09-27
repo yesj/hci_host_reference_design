@@ -8,7 +8,6 @@
 #include "npe_error_code.h"
 #include "npe_gem_hci_library_interface.h"
 #include "npe_gem_hci_library_response_strings.h"
-#include "npe_gem_hci_data_manager.h"
 
 typedef struct 
 {
@@ -69,15 +68,14 @@ int main()
     bool run = true;
 
     bool waitForPingResponse = true;
-    err = npe_gem_hci_library_interface_init();
+    err = npe_gem_hci_library_interface_init(send_data_to_gem);
     assert(err == NPE_GEM_RESPONSE_OK);
 
     // Keep sending Ping message until we get a response. 
     while(waitForPingResponse) 
     {
         sleep(1);
-        printf("Send Ping\n");
-        
+       
         err = npe_hci_library_send_ping();
 
         if(err == NPE_GEM_RESPONSE_OK)
@@ -132,28 +130,20 @@ int main()
     standard_response_t error_code;
     err = npe_hci_library_send_command_gymconnect_set_fe_state(WF_GEM_HCI_GYMCONNECT_FITNESS_EQUIPMENT_STATE_IDLE, &error_code);
     assert(err == NPE_GEM_RESPONSE_OK);
-
     
     err = npe_hci_library_send_command_bluetooth_control_start_advertising(&error_code);
     assert(err == NPE_GEM_RESPONSE_OK);
 
-    // Start sending data @ 1Hz to the GEM
-    err = npe_gem_hci_data_manager_init(send_data_to_gem);
-    assert(err == NPE_GEM_RESPONSE_OK);
-
+    // Send initial data
     send_data_to_gem();
 
     print_help();
     fflush(stdout);
 
-   
-
     while(run)
     {
         uint8_t input_char;
-        //char input_buffer[1024];
-        //fgets(input_buffer, sizeof(input_buffer), stdin);
-        //sscanf(input_buffer, "%c", &input_char);
+
         input_char = getchar();
         switch(input_char)
         {
@@ -220,9 +210,7 @@ int main()
             }
             case '+':
             {
-                // Increase grade
-
-               
+                // Increase grade      
                 m_workout_data.deci_grade += 50;
 
                 if(m_workout_data.deci_grade > 1000)
