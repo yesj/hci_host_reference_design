@@ -420,6 +420,12 @@ uint32_t npe_hci_library_send_command_bluetooth_info_set_firmware_rev(utf8_data_
 
 uint32_t npe_hci_library_send_command_bluetooth_info_set_battery_included(uint8_t battery_included)
 {
+    if(battery_included != WF_GEM_HCI_BLUETOOTH_BATTERY_SERVICE_NOT_INCLUDE &&
+        battery_included != WF_GEM_HCI_BLUETOOTH_BATTERY_SERVICE_INCLUDE)
+    {
+       return(NPE_GEM_RESPONSE_INVALID_PARAMETER); 
+    }
+
     bool locked = npe_serial_transmit_lock();
     messageToSend.message_class_id = WF_GEM_HCI_MSG_CLASS_BT_DEVICE_INFO;
     messageToSend.message_id = WF_GEM_HCI_COMMAND_ID_BT_DEVICE_INFO_SET_BATT_SERV_INC;

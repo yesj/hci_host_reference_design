@@ -7,6 +7,7 @@
 #define NPE_GEM_RESPONSE_RETRIES_EXHAUSTED   ((uint32_t) 2)
 #define NPE_GEM_RESPONSE_UNABLE_TO_WRITE     ((uint32_t) 3)
 #define NPE_GEM_RESPONSE_SERIAL_OPEN_FAIL    ((uint32_t) 4)
+#define NPE_GEM_RESPONSE_INVALID_PARAMETER   ((uint32_t) 5)
 
 
 #endif
