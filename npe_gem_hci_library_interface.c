@@ -144,7 +144,6 @@ static void npe_hci_library_send_gymconnect_message(uint8_t message_id)
         }
         case WF_GEM_HCI_COMMAND_ID_GYM_CONNECT_UPDATE_WORKOUT_DATA:
         {
-            printf("4\n"); fflush(stdout);
             wf_gem_hci_manager_gymconnect_perform_workout_data_update();
             break;
         }
@@ -295,12 +294,19 @@ static void npe_hci_library_timeout(void)
 }
 uint32_t npe_gem_hci_library_interface_init(one_second_timeout_t one_second_timout_cb)
 {
+    npe_serial_interface_callbacks_t tx_callbacks;
+    tx_callbacks.parse_bytes_cb = npe_gem_hci_library_interface_parse_bytes;
+    tx_callbacks.transmit_message_cb = npe_hci_library_send_message;
+    tx_callbacks.timeout_cb = npe_hci_library_timeout;
+    tx_callbacks.retry_timeout_cb = wf_gem_hci_manager_process_command_retry;
+
     // Initialize the serial interface
     if(one_second_timout_cb)
         m_timeout_cb = one_second_timout_cb;
 
+
     npe_serial_interface_list_ports();
-    return(npe_serial_interface_init("COM6", npe_gem_hci_library_interface_parse_bytes, npe_hci_library_send_message, npe_hci_library_timeout));
+    return(npe_serial_interface_init("COM6", &tx_callbacks));
 
 }
 
@@ -643,6 +649,23 @@ void wf_gem_hci_comms_on_message_received(wf_gem_hci_comms_message_t* message)
 
 }
 
+void wf_gem_hci_manager_on_begin_retry_timer(uint16_t cmd_timeout_ms)
+{
+    npe_serial_interface_start_retry_timer(cmd_timeout_ms);
+}
+
+// cancel/stop the timer started in wf_gem_hci_manager_on_begin_retry_timer()
+void wf_gem_hci_manager_on_cancel_retry_timer(void)
+{
+    npe_serial_interface_cancel_retry_timer();
+}
+
+// This callback is called if a command message can not be sent and all retries have failed.
+void wf_gem_hci_manager_on_command_send_failure(wf_gem_hci_comms_message_t* message)
+{
+    printf("wf_gem_hci_manager_on_command_send_failure\n");
+    assert(false);
+}
 
 
 

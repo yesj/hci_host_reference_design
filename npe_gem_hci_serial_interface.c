@@ -14,11 +14,12 @@
 
 #define NPE_HCI_TX_FLAG_SEND_MSG    ((uint32_t) 0x00000001)
 #define NPE_HCI_TX_FLAG_TIMEOUT     ((uint32_t) 0x00000002)
+#define NPE_HCI_TX_FLAG_RETRY       ((uint32_t) 0x00000004)
 
 // Threading local variables. 
 static pthread_mutex_t rxMutex, txMutex;
 static pthread_cond_t rxCond, txCond;
-static pthread_t rx_thread_id, tx_thread_id, timer_thread_id; 
+static pthread_t rx_thread_id, tx_thread_id, timer_thread_id, retry_timer_thread_id; 
 
 static uint32_t m_tx_event; 
 
@@ -26,9 +27,11 @@ static uint32_t m_tx_event;
 static struct sp_port *port;
 
 // static callbacks 
-static parse_bytes_t m_got_data_cb;
-static transmit_message_t m_tx_msg_cb;
-static timeout_t m_timeout_cb;
+// static parse_bytes_t m_got_data_cb;
+// static transmit_message_t m_tx_msg_cb;
+// static timeout_t m_timeout_cb;
+// m_retry_timeout_cb
+static npe_serial_interface_callbacks_t m_callback;
 
 void npe_serial_interface_list_ports(void) {
     int i;
@@ -48,6 +51,35 @@ void npe_serial_interface_list_ports(void) {
     }
     printf("\n");
 }
+
+
+static void* npe_serial_interface_retry_timer(void* vargp)
+{
+    struct timespec ts;
+    int res;
+    assert(vargp != NULL);
+
+    long msec = *(uint16_t*)vargp;
+
+    ts.tv_sec = msec / 1000;
+    ts.tv_nsec = (msec % 1000) * 1000000;
+
+    res = nanosleep(&ts, &ts);
+
+    if(res == 0)
+    {
+        pthread_mutex_lock(&txMutex);
+
+        m_tx_event |= NPE_HCI_TX_FLAG_RETRY;
+
+        pthread_cond_signal(&txCond);
+        pthread_mutex_unlock(&txMutex);
+    }
+
+    return NULL;
+
+}
+
 
 static void* npe_serial_interface_timer_thread(void *vargp)
 {
@@ -105,16 +137,28 @@ static void* npe_serial_interface_transmit_thread(void *vargp)
             {
                 m_tx_event &= ~NPE_HCI_TX_FLAG_SEND_MSG;
                 
-                if(m_tx_msg_cb)
-                    m_tx_msg_cb();
+                if(m_callback.transmit_message_cb)
+                    m_callback.transmit_message_cb();
             }
             if(m_tx_event & NPE_HCI_TX_FLAG_TIMEOUT)
             {
                 m_tx_event &= ~NPE_HCI_TX_FLAG_TIMEOUT;
 
-                if(m_timeout_cb)
-                    m_timeout_cb();
+                if(m_callback.timeout_cb)
+                    m_callback.timeout_cb();
             }
+            if(m_tx_event & NPE_HCI_TX_FLAG_RETRY)
+            {
+                m_tx_event &= ~NPE_HCI_TX_FLAG_RETRY;
+                if(m_callback.retry_timeout_cb)
+                    m_callback.retry_timeout_cb();
+                pthread_join(retry_timer_thread_id, NULL);
+                
+            }
+
+
+
+
         }
 
         pthread_mutex_unlock(&txMutex);
@@ -149,8 +193,8 @@ static void* npe_serial_interface_receive_thread(void *vargp)
         int byte_num = sp_nonblocking_read(port,byte_buff,512);
         if(byte_num > 0)
         {
-            if(m_got_data_cb)
-                m_got_data_cb(byte_buff,byte_num);
+            if(m_callback.parse_bytes_cb)
+                m_callback.parse_bytes_cb(byte_buff,byte_num);
         }   
     } 
     return NULL; 
@@ -197,9 +241,10 @@ void npe_serial_interface_signal_response(handle_recieved_message_t handle_recie
 
 uint32_t npe_serial_interface_wait_for_response(check_if_wait_condition_met_cb_t check_if_wait_condition_met_cb)
 {
+
     uint32_t error_code = NPE_GEM_RESPONSE_RETRIES_EXHAUSTED;
     uint8_t waitCount = 10; // Wait a maximum 10 times to get the correct response. 
-    int timeInMs = 500;
+    int timeInMs = (WF_GEM_HCI_DEFAULT_MAX_COMMAND_RETRY_ATTEMPTS+1) * WF_GEM_HCI_DEFAULT_COMMAND_TIMEOUT_MS + 50;
     struct timeval tv;
     struct timespec ts;
     int res;
@@ -255,22 +300,29 @@ uint32_t npe_serial_interface_send_byte(uint8_t tx_byte)
     
 }
    
-uint32_t npe_serial_interface_init(const char* p_port, parse_bytes_t parse_bytes_cb, transmit_message_t tx_msg_cb, timeout_t timeout_cb)
+
+uint32_t npe_serial_interface_init(const char* p_port, npe_serial_interface_callbacks_t* p_callback)
 {
     uint32_t err_code;
 
-    if(parse_bytes_cb)
+    assert(p_callback != NULL);
+
+    if(p_callback->parse_bytes_cb)
     {
-        m_got_data_cb = parse_bytes_cb;
+        m_callback.parse_bytes_cb = p_callback->parse_bytes_cb;
     } 
 
-    if(tx_msg_cb)
+    if(p_callback->transmit_message_cb)
     {
-        m_tx_msg_cb = tx_msg_cb;
+        m_callback.transmit_message_cb = p_callback->transmit_message_cb;
     }
-    if(timeout_cb)
+    if(p_callback->timeout_cb)
     {
-        m_timeout_cb = timeout_cb;
+        m_callback.timeout_cb = p_callback->timeout_cb;
+    }
+    if(p_callback->retry_timeout_cb)
+    {
+        m_callback.retry_timeout_cb = p_callback->retry_timeout_cb;
     }
 
     
@@ -298,13 +350,29 @@ uint32_t npe_serial_interface_init(const char* p_port, parse_bytes_t parse_bytes
         res = pthread_create(&timer_thread_id, NULL, npe_serial_interface_timer_thread, NULL);
         assert(res == 0);
 
-
     }
 
     return(err_code);
     //pthread_join(thread_id, NULL);
 }
 
+
+void npe_serial_interface_start_retry_timer(uint16_t msec)
+{
+
+    // Create thread for one-shot timer.
+    int res = pthread_create(&retry_timer_thread_id, NULL, npe_serial_interface_retry_timer, (void*)&msec);
+    assert(res == 0);
+}
+
+
+void npe_serial_interface_cancel_retry_timer(void)
+{
+    int res = pthread_cancel(retry_timer_thread_id);
+    assert(res == 0);
+    pthread_join(retry_timer_thread_id, NULL);
+
+}
    
 
 
@@ -380,22 +448,6 @@ void wf_gem_hci_manager_on_command_response_bluetooth_config_set_device_name(uin
 
 
 
-void wf_gem_hci_manager_on_begin_retry_timer(uint16_t cmd_timeout_ms)
-{
-    //printf("wf_gem_hci_manager_on_begin_retry_timer\n");
-}
-
-// cancel/stop the timer started in wf_gem_hci_manager_on_begin_retry_timer()
-void wf_gem_hci_manager_on_cancel_retry_timer(void)
-{
-    //printf("wf_gem_hci_manager_on_cancel_retry_timer\n");
-}
-
-// This callback is called if a command message can not be sent and all retries have failed.
-void wf_gem_hci_manager_on_command_send_failure(wf_gem_hci_comms_message_t* message)
-{
-    printf("wf_gem_hci_manager_on_command_send_failure\n");
-}
 
 void wf_gem_hci_manager_gymconnect_on_command_send_failure(wf_gem_hci_comms_message_t *message)
 {
