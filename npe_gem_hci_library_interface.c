@@ -1,3 +1,22 @@
+//  Copyright (c) 2017-2019 by North Pole Engineering, Inc.  All rights reserved.
+//
+//  Printed in the United States of America.  Except as permitted under the United States
+//  Copyright Act of 1976, no part of this software may be reproduced or distributed in
+//  any form or by any means, without the prior written permission of North Pole
+//  Engineering, Inc., unless such copying is expressly permitted by federal copyright law.
+//
+//  Address copying inquires to:
+//  North Pole Engineering, Inc.
+//  npe@npe-inc.com
+//  221 North First St. Ste. 310
+//  Minneapolis, Minnesota 55401
+//
+//  Information contained in this software has been created or obtained by North Pole Engineering,
+//  Inc. from sources believed to be reliable.  However, North Pole Engineering, Inc. does not
+//  guarantee the accuracy or completeness of the information published herein nor shall
+//  North Pole Engineering, Inc. be liable for any errors, omissions, or damages arising
+//  from the use of this software.
+
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -279,12 +298,7 @@ static void npe_hci_library_send_message(void)
     }
 }
 
-static void npe_gem_hci_library_process_received_msg(void* message, uint32_t size)
-{
-    memcpy(&receivedMessage, message, size);
-}
-
-
+// 1Hz timer
 static void npe_hci_library_timeout(void)
 {
     if(m_timeout_cb)
@@ -292,22 +306,10 @@ static void npe_hci_library_timeout(void)
         m_timeout_cb();
     }
 }
-uint32_t npe_gem_hci_library_interface_init(one_second_timeout_t one_second_timout_cb)
+
+static void npe_gem_hci_library_process_received_msg(void* message, uint32_t size)
 {
-    npe_serial_interface_callbacks_t tx_callbacks;
-    tx_callbacks.parse_bytes_cb = npe_gem_hci_library_interface_parse_bytes;
-    tx_callbacks.transmit_message_cb = npe_hci_library_send_message;
-    tx_callbacks.timeout_cb = npe_hci_library_timeout;
-    tx_callbacks.retry_timeout_cb = wf_gem_hci_manager_process_command_retry;
-
-    // Initialize the serial interface
-    if(one_second_timout_cb)
-        m_timeout_cb = one_second_timout_cb;
-
-
-    npe_serial_interface_list_ports();
-    return(npe_serial_interface_init("COM6", &tx_callbacks));
-
+    memcpy(&receivedMessage, message, size);
 }
 
 static bool npe_gem_library_check_if_response_received(int response)
@@ -320,6 +322,23 @@ static bool npe_gem_library_check_if_response_received(int response)
 }
 
 
+uint32_t npe_gem_hci_library_interface_init(one_second_timeout_t one_second_timout_cb)
+{
+    npe_serial_interface_callbacks_t tx_callbacks;
+    tx_callbacks.parse_bytes_cb = npe_gem_hci_library_interface_parse_bytes;
+    tx_callbacks.transmit_message_cb = npe_hci_library_send_message;
+    tx_callbacks.timeout_cb = npe_hci_library_timeout;
+    tx_callbacks.retry_timeout_cb = wf_gem_hci_manager_process_command_retry;
+
+    // Initialize the serial interface
+    if(one_second_timout_cb)
+        m_timeout_cb = one_second_timout_cb;
+
+    npe_serial_interface_list_ports();
+    return(npe_serial_interface_init("COM6", &tx_callbacks));
+
+}
+
 uint32_t npe_hci_library_send_ping(void)
 {
     bool locked = npe_serial_transmit_lock();
@@ -331,10 +350,10 @@ uint32_t npe_hci_library_send_ping(void)
     else
         wf_gem_hci_manager_send_command_sytem_ping();  
     
-
     return(npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received));
 }
-uint32_t npe_hci_library_send_command_bluetooth_config_set_device_name(utf8_data_t* bluetoothName)
+
+uint32_t npe_hci_library_send_command_bluetooth_config_set_device_name(utf8_data_t* bluetoothName, standard_response_t* p_set_device_name_response)
 {
     bool locked = npe_serial_transmit_lock(); 
     messageToSend.message_class_id = WF_GEM_HCI_MSG_CLASS_BT_CONFIG;
@@ -346,10 +365,18 @@ uint32_t npe_hci_library_send_command_bluetooth_config_set_device_name(utf8_data
     else
         wf_gem_hci_manager_send_command_bluetooth_config_set_device_name(messageToSend.args.bt_config_set_device_name.bluetooth_name);
  
-    return(npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received));
+
+    uint32_t res = npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received);
+
+    assert(receivedMessage.message_class_id == WF_GEM_HCI_MSG_CLASS_BT_CONFIG);
+    assert(receivedMessage.message_id == WF_GEM_HCI_COMMAND_ID_BT_CONFIG_SET_DEVICE_NAME);
+
+    p_set_device_name_response->error_code = m_last_response.response.error_code;
+
+    return(res);
 }
 
-uint32_t npe_hci_library_send_command_bluetooth_info_set_manufacturer_name(utf8_data_t* manufacturer_name)
+uint32_t npe_hci_library_send_command_bluetooth_info_set_manufacturer_name(utf8_data_t* manufacturer_name, standard_response_t* p_set_manufacturer_name_response)
 {
     bool locked = npe_serial_transmit_lock();
     messageToSend.message_class_id = WF_GEM_HCI_MSG_CLASS_BT_DEVICE_INFO;
@@ -360,14 +387,19 @@ uint32_t npe_hci_library_send_command_bluetooth_info_set_manufacturer_name(utf8_
         npe_serial_transmit_message_and_unlock();
     else
         wf_gem_hci_manager_send_command_bluetooth_info_set_manufacturer_name(messageToSend.args.bt_device_info_set_manufacturer_name.manufacturer_name);
- 
     
-    return(npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received));
+    uint32_t res = npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received);
+    
+    assert(receivedMessage.message_class_id == WF_GEM_HCI_MSG_CLASS_BT_DEVICE_INFO);
+    assert(receivedMessage.message_id == WF_GEM_HCI_COMMAND_ID_BT_DEVICE_INFO_SET_MANU_NAME);
+
+    p_set_manufacturer_name_response->error_code = m_last_response.response.error_code;
+    return(res);
 }
 
 
 
-uint32_t npe_hci_library_send_command_bluetooth_info_set_model_number(utf8_data_t* model_number)
+uint32_t npe_hci_library_send_command_bluetooth_info_set_model_number(utf8_data_t* model_number, standard_response_t* p_set_model_number_response)
 {
     bool locked = npe_serial_transmit_lock();
     messageToSend.message_class_id = WF_GEM_HCI_MSG_CLASS_BT_DEVICE_INFO;
@@ -378,10 +410,16 @@ uint32_t npe_hci_library_send_command_bluetooth_info_set_model_number(utf8_data_
     else
         wf_gem_hci_manager_send_command_bluetooth_info_set_model_number(messageToSend.args.bt_device_info_set_model_number.model_number);
  
-    return(npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received));
+    uint32_t res = npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received);
+    
+    assert(receivedMessage.message_class_id == WF_GEM_HCI_MSG_CLASS_BT_DEVICE_INFO);
+    assert(receivedMessage.message_id == WF_GEM_HCI_COMMAND_ID_BT_DEVICE_INFO_SET_MODEL_NUM);
+
+    p_set_model_number_response->error_code = m_last_response.response.error_code;
+    return(res);
 }
 
-uint32_t npe_hci_library_send_command_bluetooth_info_set_serial_number(utf8_data_t* serial_number)
+uint32_t npe_hci_library_send_command_bluetooth_info_set_serial_number(utf8_data_t* serial_number, standard_response_t* p_set_serial_number_response)
 {
     bool locked = npe_serial_transmit_lock();
     messageToSend.message_class_id = WF_GEM_HCI_MSG_CLASS_BT_DEVICE_INFO;
@@ -392,10 +430,16 @@ uint32_t npe_hci_library_send_command_bluetooth_info_set_serial_number(utf8_data
     else
         wf_gem_hci_manager_send_command_bluetooth_info_set_serial_number(messageToSend.args.bt_device_info_set_serial_number.serial_number);
  
-    return(npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received));
+    uint32_t res = npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received);
+    
+    assert(receivedMessage.message_class_id == WF_GEM_HCI_MSG_CLASS_BT_DEVICE_INFO);
+    assert(receivedMessage.message_id == WF_GEM_HCI_COMMAND_ID_BT_DEVICE_INFO_SET_SERIAL_NUM);
+
+    p_set_serial_number_response->error_code = m_last_response.response.error_code;
+    return(res);
 }
 
-uint32_t npe_hci_library_send_command_bluetooth_info_set_hardware_rev(utf8_data_t* hardware_revision)
+uint32_t npe_hci_library_send_command_bluetooth_info_set_hardware_rev(utf8_data_t* hardware_revision, standard_response_t* p_response)
 {
     bool locked = npe_serial_transmit_lock();
     messageToSend.message_class_id = WF_GEM_HCI_MSG_CLASS_BT_DEVICE_INFO;
@@ -406,10 +450,16 @@ uint32_t npe_hci_library_send_command_bluetooth_info_set_hardware_rev(utf8_data_
         npe_serial_transmit_message_and_unlock();
     else 
         wf_gem_hci_manager_send_command_bluetooth_info_set_hardware_rev(messageToSend.args.bt_device_info_set_hardware_revision.hardware_revision);
- 
-    return(npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received));
+    
+    uint32_t res = npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received);
+    
+    assert(receivedMessage.message_class_id == WF_GEM_HCI_MSG_CLASS_BT_DEVICE_INFO);
+    assert(receivedMessage.message_id == WF_GEM_HCI_COMMAND_ID_BT_DEVICE_INFO_SET_HW_REV);
+
+    p_response->error_code = m_last_response.response.error_code;
+    return(res);
 }
-uint32_t npe_hci_library_send_command_bluetooth_info_set_firmware_rev(utf8_data_t* firmware_revision)
+uint32_t npe_hci_library_send_command_bluetooth_info_set_firmware_rev(utf8_data_t* firmware_revision, standard_response_t* p_response)
 {
     bool locked = npe_serial_transmit_lock();
     messageToSend.message_class_id = WF_GEM_HCI_MSG_CLASS_BT_DEVICE_INFO;
@@ -420,11 +470,17 @@ uint32_t npe_hci_library_send_command_bluetooth_info_set_firmware_rev(utf8_data_
         npe_serial_transmit_message_and_unlock();
     else 
         wf_gem_hci_manager_send_command_bluetooth_info_set_firmware_rev(messageToSend.args.bt_device_info_set_firmware_revision.firmware_revision);
-   
-    return(npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received));
+    
+    uint32_t res = npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received);
+    
+    assert(receivedMessage.message_class_id == WF_GEM_HCI_MSG_CLASS_BT_DEVICE_INFO);
+    assert(receivedMessage.message_id == WF_GEM_HCI_COMMAND_ID_BT_DEVICE_INFO_SET_FW_REV);
+
+    p_response->error_code = m_last_response.response.error_code;
+    return(res);
 }
 
-uint32_t npe_hci_library_send_command_bluetooth_info_set_battery_included(uint8_t battery_included)
+uint32_t npe_hci_library_send_command_bluetooth_info_set_battery_included(uint8_t battery_included, standard_response_t* p_response)
 {
     if(battery_included != WF_GEM_HCI_BLUETOOTH_BATTERY_SERVICE_NOT_INCLUDE &&
         battery_included != WF_GEM_HCI_BLUETOOTH_BATTERY_SERVICE_INCLUDE)
@@ -442,8 +498,13 @@ uint32_t npe_hci_library_send_command_bluetooth_info_set_battery_included(uint8_
     else
         wf_gem_hci_manager_send_command_bluetooth_info_set_battery_included(messageToSend.args.bt_device_info_set_battery_included.battery_included);
   
+    uint32_t res = npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received);
     
-    return(npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received));
+    assert(receivedMessage.message_class_id == WF_GEM_HCI_MSG_CLASS_BT_DEVICE_INFO);
+    assert(receivedMessage.message_id == WF_GEM_HCI_COMMAND_ID_BT_DEVICE_INFO_SET_BATT_SERV_INC);
+
+    p_response->error_code = m_last_response.response.error_code;
+    return(res);
 }
 
 uint32_t npe_hci_library_send_command_bluetooth_control_start_advertising(standard_response_t* p_advertising_start_response)
@@ -492,22 +553,9 @@ uint32_t npe_hci_library_send_command_bluetooth_control_stop_advertising(standar
     return(res);
 }
 
-uint32_t npe_hci_library_send_command_gymconnect_set_supported_equipment_control_features(uint32_t equipment_control_field_identifier)
-{
-    bool locked = npe_serial_transmit_lock(); 
-    messageToSend.message_class_id = WF_GEM_HCI_MSG_CLASS_GYM_CONNECT;
-    messageToSend.message_id = WF_GEM_HCI_COMMAND_ID_GYM_CONNECT_SET_FE_CONTROL_FEATURES;
-    messageToSend.args.gymconnect_set_supported_equipment_control_features.equipment_control_field_identifier = equipment_control_field_identifier;
-    
-    if(locked)
-        npe_serial_transmit_message_and_unlock();
-    else 
-        wf_gem_hci_manager_gymconnect_set_supported_equipment_control_features(messageToSend.args.gymconnect_set_supported_equipment_control_features.equipment_control_field_identifier);
-    
-    return(npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received));
-}
 
-uint32_t npe_hci_library_send_command_ant_config_set_hardware_version(uint8_t hardware_version)
+
+uint32_t npe_hci_library_send_command_ant_config_set_hardware_version(uint8_t hardware_version, standard_response_t* p_response)
 {
     bool locked = npe_serial_transmit_lock(); 
     messageToSend.message_class_id = WF_GEM_HCI_MSG_CLASS_ANT_CONFIG;
@@ -518,11 +566,18 @@ uint32_t npe_hci_library_send_command_ant_config_set_hardware_version(uint8_t ha
         npe_serial_transmit_message_and_unlock();
     else
         wf_gem_hci_manager_send_command_ant_config_set_hardware_version(messageToSend.args.ant_config_set_hardware_version.hardware_version);
-     
-    return(npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received));
+    
+    uint32_t res = npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received);
+
+    assert(receivedMessage.message_class_id == WF_GEM_HCI_MSG_CLASS_ANT_CONFIG);
+    assert(receivedMessage.message_id == WF_GEM_HCI_COMMAND_ID_ANT_CONFIG_SET_HW_VER);
+
+    p_response->error_code = m_last_response.response.error_code;
+
+    return(res);
 }
 
-uint32_t npe_hci_library_send_command_ant_config_set_model_number(uint16_t model_number)
+uint32_t npe_hci_library_send_command_ant_config_set_model_number(uint16_t model_number, standard_response_t* p_response)
 {
     bool locked = npe_serial_transmit_lock();
     messageToSend.message_class_id = WF_GEM_HCI_MSG_CLASS_ANT_CONFIG;
@@ -533,10 +588,17 @@ uint32_t npe_hci_library_send_command_ant_config_set_model_number(uint16_t model
     else
         wf_gem_hci_manager_send_command_ant_config_set_model_number(messageToSend.args.ant_config_set_model_number.model_number);
   
-    return(npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received));
+    uint32_t res = npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received);
+
+    assert(receivedMessage.message_class_id == WF_GEM_HCI_MSG_CLASS_ANT_CONFIG);
+    assert(receivedMessage.message_id == WF_GEM_HCI_COMMAND_ID_ANT_CONFIG_SET_MODEL_NUM);
+
+    p_response->error_code = m_last_response.response.error_code;
+
+    return(res);
 }
 
-uint32_t npe_hci_library_send_command_ant_config_set_software_version(uint8_t main, uint8_t supplemental)
+uint32_t npe_hci_library_send_command_ant_config_set_software_version(uint8_t main, uint8_t supplemental, standard_response_t* p_response)
 {
     bool locked = npe_serial_transmit_lock();
  
@@ -550,10 +612,17 @@ uint32_t npe_hci_library_send_command_ant_config_set_software_version(uint8_t ma
     else
         wf_gem_hci_manager_send_command_ant_config_set_software_version(main, supplemental);
  
-    return(npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received));
+    uint32_t res = npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received);
+
+    assert(receivedMessage.message_class_id == WF_GEM_HCI_MSG_CLASS_ANT_CONFIG);
+    assert(receivedMessage.message_id == WF_GEM_HCI_COMMAND_ID_ANT_CONFIG_SET_SW_VER);
+
+    p_response->error_code = m_last_response.response.error_code;
+
+    return(res);
 }
 
-uint32_t npe_hci_library_send_command_ant_config_set_serial_number(uint32_t serial_number)
+uint32_t npe_hci_library_send_command_ant_config_set_serial_number(uint32_t serial_number, standard_response_t* p_response)
 {
     bool locked = npe_serial_transmit_lock();
 
@@ -565,10 +634,39 @@ uint32_t npe_hci_library_send_command_ant_config_set_serial_number(uint32_t seri
     else
         wf_gem_hci_manager_send_command_ant_config_set_serial_number(messageToSend.args.ant_config_set_serial_number.serial_number);
           
-    return(npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received));
+    uint32_t res = npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received);
+
+    assert(receivedMessage.message_class_id == WF_GEM_HCI_MSG_CLASS_ANT_CONFIG);
+    assert(receivedMessage.message_id == WF_GEM_HCI_COMMAND_ID_ANT_CONFIG_SET_SERIAL_NUMBER);
+
+    p_response->error_code = m_last_response.response.error_code;
+
+    return(res);
 }
 
-uint32_t npe_hci_library_send_command_gymconnect_set_fe_type(wf_gem_hci_gymconnect_fitness_equipment_type_e fe_type)
+uint32_t npe_hci_library_send_command_gymconnect_set_supported_equipment_control_features(uint32_t equipment_control_field_identifier, standard_response_t* p_response)
+{
+    bool locked = npe_serial_transmit_lock(); 
+    messageToSend.message_class_id = WF_GEM_HCI_MSG_CLASS_GYM_CONNECT;
+    messageToSend.message_id = WF_GEM_HCI_COMMAND_ID_GYM_CONNECT_SET_FE_CONTROL_FEATURES;
+    messageToSend.args.gymconnect_set_supported_equipment_control_features.equipment_control_field_identifier = equipment_control_field_identifier;
+    
+    if(locked)
+        npe_serial_transmit_message_and_unlock();
+    else 
+        wf_gem_hci_manager_gymconnect_set_supported_equipment_control_features(messageToSend.args.gymconnect_set_supported_equipment_control_features.equipment_control_field_identifier);
+    
+    uint32_t res = npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received);
+
+    assert(receivedMessage.message_class_id == WF_GEM_HCI_MSG_CLASS_GYM_CONNECT);
+    assert(receivedMessage.message_id == WF_GEM_HCI_COMMAND_ID_GYM_CONNECT_SET_FE_CONTROL_FEATURES);
+
+    p_response->error_code = m_last_response.response.error_code;
+
+    return(res);
+}
+
+uint32_t npe_hci_library_send_command_gymconnect_set_fe_type(wf_gem_hci_gymconnect_fitness_equipment_type_e fe_type, standard_response_t* p_response)
 {
     bool locked = npe_serial_transmit_lock();
 
@@ -581,7 +679,14 @@ uint32_t npe_hci_library_send_command_gymconnect_set_fe_type(wf_gem_hci_gymconne
     else
         wf_gem_hci_manager_gymconnect_set_fe_type(messageToSend.args.gymconnect_set_fe_type.fe_type);
             
-    return(npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received));
+    uint32_t res = npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received);
+
+    assert(receivedMessage.message_class_id == WF_GEM_HCI_MSG_CLASS_GYM_CONNECT);
+    assert(receivedMessage.message_id == WF_GEM_HCI_COMMAND_ID_GYM_CONNECT_SET_FE_TYPE);
+
+    p_response->error_code = m_last_response.response.error_code;
+
+    return(res);
 }
 
 uint32_t npe_hci_library_send_command_gymconnect_set_fe_state(wf_gem_hci_gymconnect_fitness_equipment_state_e fe_state, standard_response_t* p_fe_state_response)
@@ -638,7 +743,7 @@ void wf_gem_hci_comms_on_send_byte(uint8_t tx_byte)
     assert(err == NPE_GEM_RESPONSE_OK);
 
 }
-
+// Called on RX thread.
 void wf_gem_hci_comms_on_message_received(wf_gem_hci_comms_message_t* message)
 {
     // Send to the HCI lib to process the received message

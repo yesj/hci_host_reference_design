@@ -53,136 +53,150 @@ uint32_t npe_hci_library_send_ping(void);
 /** @brief Send the Bluetooth Device Name to the GEM.
  *
  * @param[in] bluetooth_name is a string denoting the bluetooth device name.
+ * @param[out] p_set_device_name_response is the response code recieved from the GEM
  *
  * @return  ::NPE_GEM_RESPONSE_OK
  *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
  *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
  */
-uint32_t npe_hci_library_send_command_bluetooth_config_set_device_name(utf8_data_t* bluetooth_name);
+uint32_t npe_hci_library_send_command_bluetooth_config_set_device_name(utf8_data_t* bluetoothName, standard_response_t* p_set_device_name_response);
+
 
 /** @brief Send the Bluetooth Manufacturer Name to the GEM.
  *
  * @param[in] manufacturer_name is a string denoting the manufacturer name.
+ * @param[out] p_set_manufacturer_name_response is the response code recieved from the GEM
  *
  * @return  ::NPE_GEM_RESPONSE_OK
  *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
  *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
  */
-uint32_t npe_hci_library_send_command_bluetooth_info_set_manufacturer_name(utf8_data_t* manufacturer_name);
+uint32_t npe_hci_library_send_command_bluetooth_info_set_manufacturer_name(utf8_data_t* manufacturer_name, standard_response_t* p_set_manufacturer_name_response);
 
 /** @brief Send the Bluetooth Model Number to the GEM.
  *
  * @param[in] model_number is a string denoting the model number.
+ * @param[out] p_set_manufacturer_name_response is the response code recieved from the GEM
  *
  * @return  ::NPE_GEM_RESPONSE_OK
  *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
  *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
  */
-uint32_t npe_hci_library_send_command_bluetooth_info_set_model_number(utf8_data_t* model_number);
+uint32_t npe_hci_library_send_command_bluetooth_info_set_model_number(utf8_data_t* model_number, standard_response_t* p_set_model_number_response);
 
 /** @brief Send the Bluetooth Serial Number to the GEM.
  *
  * @param[in] serial_number is a string denoting the serial number.
+ * @param[out] p_response_error_code is the response code recieved from the GEM
  *
  * @return  ::NPE_GEM_RESPONSE_OK
  *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
  *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
  */
-uint32_t npe_hci_library_send_command_bluetooth_info_set_serial_number(utf8_data_t* serial_number);
+uint32_t npe_hci_library_send_command_bluetooth_info_set_serial_number(utf8_data_t* serial_number, standard_response_t* p_response_error_code);
 
 /** @brief Send the Bluetooth Hardware Revision to the GEM.
  *
  * @param[in] hardware_revision is a string denoting the hardware revision.
+ * @param[out] p_response is the error code recieved from the GEM
  *
  * @return  ::NPE_GEM_RESPONSE_OK
  *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
  *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
  */
-uint32_t npe_hci_library_send_command_bluetooth_info_set_hardware_rev(utf8_data_t* hardware_revision);
+uint32_t npe_hci_library_send_command_bluetooth_info_set_hardware_rev(utf8_data_t* hardware_revision, standard_response_t* p_response);
 
 /** @brief Send the Bluetooth Firmware Revision to the GEM.
  *
  * @param[in] firmware_revision is a string denoting the firmware revision number.
+ * @param[out] p_response is the error code recieved from the GEM
  *
  * @return  ::NPE_GEM_RESPONSE_OK
  *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
  *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
  */
-uint32_t npe_hci_library_send_command_bluetooth_info_set_firmware_rev(utf8_data_t* firmware_revision);
+uint32_t npe_hci_library_send_command_bluetooth_info_set_firmware_rev(utf8_data_t* firmware_revision, standard_response_t* p_response);
 
 /** @brief Send whether battery service should be included to the GEM.
  *
  * @param[in] battery_included 1 byte unsigned value denoting whether to enable battery service.
  *            WF_GEM_HCI_BLUETOOTH_BATTERY_SERVICE_INCLUDE (0x01)
  *            WF_GEM_HCI_BLUETOOTH_BATTERY_SERVICE_NOT_INCLUDE (0x00)
+ * @param[out] p_response is the error code recieved from the GEM
  *
  * @return  ::NPE_GEM_RESPONSE_OK
  *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
  *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
  *          ::NPE_GEM_RESPONSE_INVALID_PARAMETER
  */
-uint32_t npe_hci_library_send_command_bluetooth_info_set_battery_included(uint8_t battery_included);
-
-/** @brief Set GEM controllable features
- *
- * @param[in] equipment_control_field_identifier 4 byte unsigned bitfield denoting denoting contollable feautures.
- *
- * @return  ::NPE_GEM_RESPONSE_OK
- *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
- *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
- */
-uint32_t npe_hci_library_send_command_gymconnect_set_supported_equipment_control_features(uint32_t equipment_control_field_identifier);
+uint32_t npe_hci_library_send_command_bluetooth_info_set_battery_included(uint8_t battery_included, standard_response_t* p_response);
 
 /** @brief Send the ANT hardware revision to GEM 
  *
  * @param[in] hardware_version 1 byte unsigned value denoting ANT hardware revision.
+ * @param[out] p_response is the error code recieved from the GEM
  *
  * @return  ::NPE_GEM_RESPONSE_OK
  *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
  *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
  */
-uint32_t npe_hci_library_send_command_ant_config_set_hardware_version(uint8_t hardware_version);
+uint32_t npe_hci_library_send_command_ant_config_set_hardware_version(uint8_t hardware_version, standard_response_t* p_response);
 
 /** @brief Send the ANT model number to GEM 
  *
  * @param[in] model_number 2 byte unsigned value denoting ANT model number.
- *
+ * @param[out] p_response is the error code recieved from the GEM
+ * 
  * @return  ::NPE_GEM_RESPONSE_OK
  *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
  *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
  */
-uint32_t npe_hci_library_send_command_ant_config_set_model_number(uint16_t model_number);
+uint32_t npe_hci_library_send_command_ant_config_set_model_number(uint16_t model_number, standard_response_t* p_response);
 
 /** @brief Send the ANT software version to GEM 
  *
  * @param[in] main 1 byte unsigned value denoting the main software version.
  * @param[in] main 1 byte unsigned value denoting the supplemental software version.
+ * @param[out] p_response is the error code recieved from the GEM
  *
  * @return  ::NPE_GEM_RESPONSE_OK
  *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
  *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
  */
-uint32_t npe_hci_library_send_command_ant_config_set_software_version(uint8_t main, uint8_t supplemental);
+uint32_t npe_hci_library_send_command_ant_config_set_software_version(uint8_t main, uint8_t supplemental, standard_response_t* p_response);
 
 /** @brief Send the ANT serial number to GEM 
  *
  * @param[in] serial_number 4 byte unsigned value denoting ANT serial number.
+ * @param[out] p_response is the error code recieved from the GEM
  *
  * @return  ::NPE_GEM_RESPONSE_OK
  *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
  *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
  */
-uint32_t npe_hci_library_send_command_ant_config_set_serial_number(uint32_t serial_number);
+uint32_t npe_hci_library_send_command_ant_config_set_serial_number(uint32_t serial_number, standard_response_t* p_response);
+
+/** @brief Set GEM controllable features
+ *
+ * @param[in] equipment_control_field_identifier 4 byte unsigned bitfield denoting denoting contollable feautures.
+ * @param[out] p_response is the error code recieved from the GEM
+ * 
+ * @return  ::NPE_GEM_RESPONSE_OK
+ *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
+ *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
+ */
+uint32_t npe_hci_library_send_command_gymconnect_set_supported_equipment_control_features(uint32_t equipment_control_field_identifier, standard_response_t* p_response);
 
 /** @brief Send the fitness equipment type to GEM 
  *
  * @param[in] fe_type is an enum denoting the fitness equipment type.
+ * @param[out] p_response is the error code recieved from the GEM
  *
  * @return  ::NPE_GEM_RESPONSE_OK
  *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
  *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
  */
-uint32_t npe_hci_library_send_command_gymconnect_set_fe_type(wf_gem_hci_gymconnect_fitness_equipment_type_e fe_type);
+uint32_t npe_hci_library_send_command_gymconnect_set_fe_type(wf_gem_hci_gymconnect_fitness_equipment_type_e fe_type, standard_response_t* p_response);
 
 /** @brief Send the fitness equipment state to GEM 
  *
@@ -194,6 +208,16 @@ uint32_t npe_hci_library_send_command_gymconnect_set_fe_type(wf_gem_hci_gymconne
  *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
  */
 uint32_t npe_hci_library_send_command_gymconnect_set_fe_state(wf_gem_hci_gymconnect_fitness_equipment_state_e fe_state, standard_response_t* p_fe_state_response);
+
+/** @brief Sends set fitness equipment data to the GEM
+ *
+ * @param[out] p_update_response is the response code recieved from the GEM
+ *
+ * @return  ::NPE_GEM_RESPONSE_OK
+ *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
+ *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
+ */
+uint32_t npe_hci_library_send_command_gymconnect_perform_workout_data_update(standard_response_t* p_update_response);
 
 /** @brief Starts bluetooth advertising on the GEM
  *
@@ -215,14 +239,6 @@ uint32_t npe_hci_library_send_command_bluetooth_control_start_advertising(standa
  */
 uint32_t npe_hci_library_send_command_bluetooth_control_stop_advertising(standard_response_t* p_advertising_stop_response);
 
-/** @brief Sends set fitness equipment data to the GEM
- *
- * @param[out] p_update_response is the response code recieved from the GEM
- *
- * @return  ::NPE_GEM_RESPONSE_OK
- *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
- *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
- */
-uint32_t npe_hci_library_send_command_gymconnect_perform_workout_data_update(standard_response_t* p_update_response);
+
 
 #endif

@@ -1,3 +1,22 @@
+//  Copyright (c) 2017-2019 by North Pole Engineering, Inc.  All rights reserved.
+//
+//  Printed in the United States of America.  Except as permitted under the United States
+//  Copyright Act of 1976, no part of this software may be reproduced or distributed in
+//  any form or by any means, without the prior written permission of North Pole
+//  Engineering, Inc., unless such copying is expressly permitted by federal copyright law.
+//
+//  Address copying inquires to:
+//  North Pole Engineering, Inc.
+//  npe@npe-inc.com
+//  221 North First St. Ste. 310
+//  Minneapolis, Minnesota 55401
+//
+//  Information contained in this software has been created or obtained by North Pole Engineering,
+//  Inc. from sources believed to be reliable.  However, North Pole Engineering, Inc. does not
+//  guarantee the accuracy or completeness of the information published herein nor shall
+//  North Pole Engineering, Inc. be liable for any errors, omissions, or damages arising
+//  from the use of this software.
+
 #include <stdio.h> 
 #include <stdlib.h> 
 #include <stdint.h>
@@ -9,6 +28,8 @@
 #include "npe_gem_hci_library_interface.h"
 #include "npe_gem_hci_library_response_strings.h"
 
+
+/** @brief Treadmill data struct.  */
 typedef struct 
 {
     uint16_t workout_time_in_seconds;
@@ -17,15 +38,14 @@ typedef struct
     uint16_t kcal_total;
     uint16_t rate_kcal_per_hour;
     uint32_t distance_meters;
-
-
-    /* data */
 } treadmill_workout_data_t;
 
+/** @brief Local variables.  */
 static treadmill_workout_data_t m_workout_data;
 static wf_gem_hci_gymconnect_fitness_equipment_state_e m_equipment_state = WF_GEM_HCI_GYMCONNECT_FITNESS_EQUIPMENT_STATE_IDLE;
 
-
+/** @brief Prints instructions to screen in CLI UI.
+ */
 void print_help(void)
 {
     printf("\n\n******* NPE GEM Host Reference Design ********** \n\n\
@@ -42,6 +62,11 @@ void print_help(void)
 \n************************************************* \n");
 }
 
+/** @brief Updates simulation data and sends to GEM. This function can 
+ * be called in any context, e.g. 1s timer thread and main. All tx call
+ * are marshalled to the tx thread. 
+ *
+ */
 void send_data_to_gem(void)
 {
     if(m_equipment_state == WF_GEM_HCI_GYMCONNECT_FITNESS_EQUIPMENT_STATE_IN_USE) {
@@ -58,12 +83,16 @@ void send_data_to_gem(void)
         standard_response_t response;
         uint32_t res = npe_hci_library_send_command_gymconnect_perform_workout_data_update(&response);
         assert(res == NPE_GEM_RESPONSE_OK);
+        NPE_GEM_HCI_LIB_PRINT_IF_ERROR(response.error_code, NPE_GEM_HCI_LIB_GET_GYMCONNECT_WORKOUT_DATA_UPDATE_ERROR_CODE_STR(response.error_code));
+
     }
 }
 
 
 int main() 
 { 
+    
+    standard_response_t response_code;
     uint32_t err;
     bool run = true;
 
@@ -88,51 +117,65 @@ int main()
     }
 
     // Set Bluetooth name. 
-    err = npe_hci_library_send_command_bluetooth_config_set_device_name("GEM Reference Design");
+    err = npe_hci_library_send_command_bluetooth_config_set_device_name("GEM Reference Design", &response_code);
     assert(err == NPE_GEM_RESPONSE_OK);
+    NPE_GEM_HCI_LIB_PRINT_IF_ERROR(response_code.error_code, NPE_GEM_HCI_LIB_GET_BT_CONFIG_SET_DEVICE_NAME_ERROR_CODE_STR(response_code.error_code));
+            
+    err = npe_hci_library_send_command_bluetooth_info_set_manufacturer_name("North Pole Engineering", &response_code);
+    assert(err == NPE_GEM_RESPONSE_OK);
+    NPE_GEM_HCI_LIB_PRINT_IF_ERROR(response_code.error_code, NPE_GEM_HCI_LIB_GET_BT_INFO_SET_MANUFACTURER_NAME_ERROR_CODE_STR(response_code.error_code));
 
-    err = npe_hci_library_send_command_bluetooth_info_set_manufacturer_name("North Pole Engineering");
+    err = npe_hci_library_send_command_bluetooth_info_set_model_number("1", &response_code);
     assert(err == NPE_GEM_RESPONSE_OK);
+    NPE_GEM_HCI_LIB_PRINT_IF_ERROR(response_code.error_code, NPE_GEM_HCI_LIB_GET_BT_INFO_SET_MODEL_NUMBER_ERROR_CODE_STR(response_code.error_code));
 
-    err = npe_hci_library_send_command_bluetooth_info_set_model_number("1");
+    err = npe_hci_library_send_command_bluetooth_info_set_serial_number("1234", &response_code);
     assert(err == NPE_GEM_RESPONSE_OK);
+    NPE_GEM_HCI_LIB_PRINT_IF_ERROR(response_code.error_code, NPE_GEM_HCI_LIB_GET_BT_INFO_SET_SERIAL_NUMBER_ERROR_CODE_STR(response_code.error_code));
 
-    err = npe_hci_library_send_command_bluetooth_info_set_serial_number("1234");
+    err = npe_hci_library_send_command_bluetooth_info_set_hardware_rev("1", &response_code);
     assert(err == NPE_GEM_RESPONSE_OK);
+    NPE_GEM_HCI_LIB_PRINT_IF_ERROR(response_code.error_code, NPE_GEM_HCI_LIB_GET_BT_INFO_SET_HARDWARE_REVISION_ERROR_CODE_STR(response_code.error_code));
 
-    err = npe_hci_library_send_command_bluetooth_info_set_hardware_rev("1");
+    err = npe_hci_library_send_command_bluetooth_info_set_firmware_rev("2", &response_code);
     assert(err == NPE_GEM_RESPONSE_OK);
+    NPE_GEM_HCI_LIB_PRINT_IF_ERROR(response_code.error_code, NPE_GEM_HCI_LIB_GET_BT_INFO_SET_FIRMWARE_REVISION_ERROR_CODE_STR(response_code.error_code));
 
-    err = npe_hci_library_send_command_bluetooth_info_set_firmware_rev("2");
+    err = npe_hci_library_send_command_bluetooth_info_set_battery_included(WF_GEM_HCI_BLUETOOTH_BATTERY_SERVICE_NOT_INCLUDE, &response_code);
     assert(err == NPE_GEM_RESPONSE_OK);
+    NPE_GEM_HCI_LIB_PRINT_IF_ERROR(response_code.error_code, NPE_GEM_HCI_LIB_GET_BT_INFO_SET_BATTERY_SERVICE_INCLUDED_ERROR_CODE_STR(response_code.error_code));
 
-    err = npe_hci_library_send_command_bluetooth_info_set_battery_included(WF_GEM_HCI_BLUETOOTH_BATTERY_SERVICE_NOT_INCLUDE);
+    err = npe_hci_library_send_command_gymconnect_set_supported_equipment_control_features(0, &response_code);
     assert(err == NPE_GEM_RESPONSE_OK);
+    NPE_GEM_HCI_LIB_PRINT_IF_ERROR(response_code.error_code, NPE_GEM_HCI_LIB_GET_GYMCONNECT_SET_SUPPORTED_EQUIPMENT_CONTROL_ERROR_CODE_STR(response_code.error_code));
 
-    err = npe_hci_library_send_command_gymconnect_set_supported_equipment_control_features(0);
+    err = npe_hci_library_send_command_ant_config_set_hardware_version(1, &response_code);
     assert(err == NPE_GEM_RESPONSE_OK);
+    NPE_GEM_HCI_LIB_PRINT_IF_ERROR(response_code.error_code, NPE_GEM_HCI_LIB_GET_ANT_CONFIG_SET_HARDWARE_VERSION_ERROR_CODE_STR(response_code.error_code));
 
-    err = npe_hci_library_send_command_ant_config_set_hardware_version(1);
+    err = npe_hci_library_send_command_ant_config_set_model_number(15000, &response_code);
     assert(err == NPE_GEM_RESPONSE_OK);
+    NPE_GEM_HCI_LIB_PRINT_IF_ERROR(response_code.error_code, NPE_GEM_HCI_LIB_GET_ANT_CONFIG_SET_MODEL_NUMBER_ERROR_CODE_STR(response_code.error_code));
 
-    err = npe_hci_library_send_command_ant_config_set_model_number(15000);
+    err = npe_hci_library_send_command_ant_config_set_software_version(1, 1, &response_code);
     assert(err == NPE_GEM_RESPONSE_OK);
+    NPE_GEM_HCI_LIB_PRINT_IF_ERROR(response_code.error_code, NPE_GEM_HCI_LIB_GET_ANT_CONFIG_SET_SOFTWARE_VERSION_ERROR_CODE_STR(response_code.error_code));
 
-    err = npe_hci_library_send_command_ant_config_set_software_version(1, 1);
+    err = npe_hci_library_send_command_ant_config_set_serial_number(1234, &response_code);
     assert(err == NPE_GEM_RESPONSE_OK);
+    NPE_GEM_HCI_LIB_PRINT_IF_ERROR(response_code.error_code, NPE_GEM_HCI_LIB_GET_ANT_CONFIG_SET_SERIAL_NUMBER_ERROR_CODE_STR(response_code.error_code));
 
-    err = npe_hci_library_send_command_ant_config_set_serial_number(1234);
+    err = npe_hci_library_send_command_gymconnect_set_fe_type(WF_GEM_HCI_GYMCONNECT_FITNESS_EQUIPMENT_TYPE_TREADMILL, &response_code);
     assert(err == NPE_GEM_RESPONSE_OK);
+    NPE_GEM_HCI_LIB_PRINT_IF_ERROR(response_code.error_code, NPE_GEM_HCI_LIB_GET_GYMCONNECT_SET_FITNESS_EQUIPMENT_TYPE_ERROR_CODE_STR(response_code.error_code));
 
-    err = npe_hci_library_send_command_gymconnect_set_fe_type(WF_GEM_HCI_GYMCONNECT_FITNESS_EQUIPMENT_TYPE_TREADMILL);
+    err = npe_hci_library_send_command_gymconnect_set_fe_state(WF_GEM_HCI_GYMCONNECT_FITNESS_EQUIPMENT_STATE_IDLE, &response_code);
     assert(err == NPE_GEM_RESPONSE_OK);
+    NPE_GEM_HCI_LIB_PRINT_IF_ERROR(response_code.error_code, NPE_GEM_HCI_LIB_GET_GYMCONNECT_SET_FITNESS_EQUIPMENT_STATE_ERROR_CODE_STR(response_code.error_code));
 
-    standard_response_t error_code;
-    err = npe_hci_library_send_command_gymconnect_set_fe_state(WF_GEM_HCI_GYMCONNECT_FITNESS_EQUIPMENT_STATE_IDLE, &error_code);
+    err = npe_hci_library_send_command_bluetooth_control_start_advertising(&response_code);
     assert(err == NPE_GEM_RESPONSE_OK);
-    
-    err = npe_hci_library_send_command_bluetooth_control_start_advertising(&error_code);
-    assert(err == NPE_GEM_RESPONSE_OK);
+    NPE_GEM_HCI_LIB_PRINT_IF_ERROR(response_code.error_code, NPE_GEM_HCI_LIB_GET_BT_CONTRL_ADV_START_ERROR_CODE_STR(response_code.error_code));
 
     // Send initial data
     send_data_to_gem();
@@ -151,25 +194,25 @@ int main()
             case 'A':
             {
                 // Start advertising
-                err = npe_hci_library_send_command_bluetooth_control_start_advertising(&error_code);
+                err = npe_hci_library_send_command_bluetooth_control_start_advertising(&response_code);
                 assert(err == NPE_GEM_RESPONSE_OK);
-                printf("Advertising Response Error Code: %s\n", NPE_GEM_HCI_LIB_GET_BT_CONTRL_ADV_START_ERROR_CODE_STR(error_code.error_code));
+                NPE_GEM_HCI_LIB_PRINT_IF_ERROR(response_code.error_code, NPE_GEM_HCI_LIB_GET_BT_CONTRL_ADV_START_ERROR_CODE_STR(response_code.error_code));
                 break;            
             }
             case 's':
             case 'S':
             {
                 // Stop advertising
-                err = npe_hci_library_send_command_bluetooth_control_stop_advertising(&error_code);
+                err = npe_hci_library_send_command_bluetooth_control_stop_advertising(&response_code);
                 assert(err == NPE_GEM_RESPONSE_OK);
-                printf("Advertising Response Error Code: %s\n", NPE_GEM_HCI_LIB_GET_BT_CONTRL_ADV_STOP_ERROR_CODE_STR(error_code.error_code));
+                NPE_GEM_HCI_LIB_PRINT_IF_ERROR(response_code.error_code, NPE_GEM_HCI_LIB_GET_BT_CONTRL_ADV_STOP_ERROR_CODE_STR(response_code.error_code));
                 break;            
             }
             case 'i':
             case 'I':
             {
                 // Go to IDLE state
-                err = npe_hci_library_send_command_gymconnect_set_fe_state(WF_GEM_HCI_GYMCONNECT_FITNESS_EQUIPMENT_STATE_IDLE, &error_code);
+                err = npe_hci_library_send_command_gymconnect_set_fe_state(WF_GEM_HCI_GYMCONNECT_FITNESS_EQUIPMENT_STATE_IDLE, &response_code);
                 assert(err == NPE_GEM_RESPONSE_OK);
                 m_equipment_state = WF_GEM_HCI_GYMCONNECT_FITNESS_EQUIPMENT_STATE_IDLE;
                 break;
@@ -178,7 +221,7 @@ int main()
             case 'U':
             {
                 // Go to IN-USE state
-                err = npe_hci_library_send_command_gymconnect_set_fe_state(WF_GEM_HCI_GYMCONNECT_FITNESS_EQUIPMENT_STATE_IN_USE, &error_code);
+                err = npe_hci_library_send_command_gymconnect_set_fe_state(WF_GEM_HCI_GYMCONNECT_FITNESS_EQUIPMENT_STATE_IN_USE, &response_code);
                 assert(err == NPE_GEM_RESPONSE_OK);
                 m_equipment_state = WF_GEM_HCI_GYMCONNECT_FITNESS_EQUIPMENT_STATE_IN_USE;
                 break;
@@ -188,7 +231,7 @@ int main()
             case 'P':
             {
                 // Go to PAUSE state
-                err = npe_hci_library_send_command_gymconnect_set_fe_state(WF_GEM_HCI_GYMCONNECT_FITNESS_EQUIPMENT_STATE_PAUSED, &error_code);
+                err = npe_hci_library_send_command_gymconnect_set_fe_state(WF_GEM_HCI_GYMCONNECT_FITNESS_EQUIPMENT_STATE_PAUSED, &response_code);
                 assert(err == NPE_GEM_RESPONSE_OK);
                 m_equipment_state = WF_GEM_HCI_GYMCONNECT_FITNESS_EQUIPMENT_STATE_PAUSED;
                 break;
@@ -197,7 +240,7 @@ int main()
             case 'F':
             {
                 // Go to FINISH state
-                err = npe_hci_library_send_command_gymconnect_set_fe_state(WF_GEM_HCI_GYMCONNECT_FITNESS_EQUIPMENT_STATE_FINISHED, &error_code);
+                err = npe_hci_library_send_command_gymconnect_set_fe_state(WF_GEM_HCI_GYMCONNECT_FITNESS_EQUIPMENT_STATE_FINISHED, &response_code);
                 assert(err == NPE_GEM_RESPONSE_OK);
                 m_equipment_state = WF_GEM_HCI_GYMCONNECT_FITNESS_EQUIPMENT_STATE_FINISHED;
                 break;
