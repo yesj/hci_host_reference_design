@@ -227,7 +227,6 @@ static uint32_t npe_serial_interface_connect_to_port(const char* p_port)
     int err = sp_get_port_by_name(p_port, &port);
     if(err == SP_OK)
     {
-        
         err = sp_open(port, SP_MODE_READ_WRITE);
 
         if(err == SP_OK)

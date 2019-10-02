@@ -126,9 +126,9 @@ static void npe_hci_library_send_ant_config_message(uint8_t message_id)
         }
         case WF_GEM_HCI_COMMAND_ID_ANT_CONFIG_SET_SW_VER:
         {
-            uint8_t main = messageToSend.args.ant_config_set_version.main;
+            uint8_t main_version = messageToSend.args.ant_config_set_version.main;
             uint8_t supplemental = messageToSend.args.ant_config_set_version.supplemental;
-            wf_gem_hci_manager_send_command_ant_config_set_software_version(main, supplemental);
+            wf_gem_hci_manager_send_command_ant_config_set_software_version(main_version, supplemental);
             break;
         }
         case WF_GEM_HCI_COMMAND_ID_ANT_CONFIG_SET_SERIAL_NUMBER:
@@ -325,7 +325,7 @@ static bool npe_gem_library_check_if_response_received(int response)
 }
 
 
-uint32_t npe_gem_hci_library_interface_init(one_second_timeout_t one_second_timout_cb)
+uint32_t npe_gem_hci_library_interface_init(const char* p_port_name, one_second_timeout_t one_second_timout_cb)
 {
     npe_serial_interface_callbacks_t tx_callbacks;
     tx_callbacks.parse_bytes_cb = npe_gem_hci_library_interface_parse_bytes;
@@ -338,7 +338,7 @@ uint32_t npe_gem_hci_library_interface_init(one_second_timeout_t one_second_timo
         m_timeout_cb = one_second_timout_cb;
 
     npe_serial_interface_list_ports();
-    return(npe_serial_interface_init("/dev/ttyUSB0", &tx_callbacks));
+    return(npe_serial_interface_init(p_port_name, &tx_callbacks));
 
 }
 

@@ -35,12 +35,15 @@ typedef struct npe_gem_hci_library_interface
 
 /** @brief Initializes the NPE GEM HCI library and serial interface.
  *
+ * @param[in] p_comport is a string denoting the name of the port to open.
  * @param[in] one_second_timeout_cb is an unsigned char (1 octet) denoting the channel number to query.
  *
  * @return  ::NPE_GEM_RESPONSE_OK
+ *          ::NPE_GEM_RESPONSE_SERIAL_NO_COMPORT
  *          ::NPE_GEM_RESPONSE_SERIAL_OPEN_FAIL
+ *          ::NPE_GEM_RESPONSE_SERIAL_CONFIG_FAIL
  */
-uint32_t npe_gem_hci_library_interface_init(one_second_timeout_t one_second_timeout_cb);
+uint32_t npe_gem_hci_library_interface_init(const char* p_comport, one_second_timeout_t one_second_timeout_cb);
 
 /** @brief Send Ping command to GEM.
  *

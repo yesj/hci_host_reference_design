@@ -46,7 +46,9 @@ void npe_serial_interface_list_ports(void);
  * @param[in] p_callbacks is a struct of all callbacks.
  *
  * @return  ::NPE_GEM_RESPONSE_OK
+ *          ::NPE_GEM_RESPONSE_SERIAL_NO_COMPORT
  *          ::NPE_GEM_RESPONSE_SERIAL_OPEN_FAIL
+ *          ::NPE_GEM_RESPONSE_SERIAL_CONFIG_FAIL
  */
 uint32_t npe_serial_interface_init(const char* p_port, npe_serial_interface_callbacks_t* p_callbacks);
 

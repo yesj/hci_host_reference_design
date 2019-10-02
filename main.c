@@ -89,16 +89,46 @@ void send_data_to_gem(void)
 }
 
 
-int main() 
+int main(int argc, char *argv[]) 
 { 
-    
+    char* p_port = "COM6";
+    if(argc > 1)
+        p_port = argv[1];
+
     standard_response_t response_code;
     uint32_t err;
     bool run = true;
 
     bool waitForPingResponse = true;
-    err = npe_gem_hci_library_interface_init(send_data_to_gem);
-    assert(err == NPE_GEM_RESPONSE_OK);
+    err = npe_gem_hci_library_interface_init(p_port, send_data_to_gem);
+
+    switch(err)
+    {
+        case NPE_GEM_RESPONSE_SERIAL_NO_COMPORT:
+        {
+            printf("Comport %s does not exist.", p_port);
+            exit(1);
+            break;
+        }
+        case NPE_GEM_RESPONSE_SERIAL_OPEN_FAIL:
+        {
+            printf("Unable to open port %s.", p_port);
+            exit(1);
+            break;
+        }
+        case NPE_GEM_RESPONSE_SERIAL_CONFIG_FAIL:
+        {
+            printf("Port %s found and opened but unable to configure.", p_port);
+            exit(1);
+            break;
+        }
+        default:
+        {
+            assert(err == NPE_GEM_RESPONSE_OK);
+            break;
+        }
+    }
+    
 
     // Keep sending Ping message until we get a response. 
     while(waitForPingResponse) 
