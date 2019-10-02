@@ -10,7 +10,7 @@ HCI_LIB_DIR := ./hci_reference_lib
 CC = gcc
 
 # define any compile-time flags
-CFLAGS = -Wall -g
+CFLAGS = -pthread -Wall -g
 
 # define any directories containing header files other than /usr/include
 #
