@@ -780,12 +780,23 @@ void wf_gem_hci_manager_on_command_send_failure(wf_gem_hci_comms_message_t* mess
 
 
 // ****** Process Command Responses. *************************************************************** //
+void wf_gem_hci_manager_on_command_response_generic(uint8_t error_code)
+{
+    m_last_response.response.error_code = error_code;
+}
+
+
 void wf_gem_hci_manager_on_command_response_bluetooth_control_start_advertising(uint8_t error_code)
 {   
     m_last_response.response.error_code = error_code;
 }
 
 void wf_gem_hci_manager_on_command_response_bluetooth_control_stop_advertising(uint8_t error_code)
+{
+    
+}
+
+void wf_gem_hci_manager_on_command_response_bluetooth_config_set_device_name(uint8_t error_code)
 {
     m_last_response.response.error_code = error_code;
 }
