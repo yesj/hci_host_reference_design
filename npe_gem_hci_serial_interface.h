@@ -81,15 +81,38 @@ uint32_t npe_serial_interface_wait_for_response(check_if_wait_condition_met_cb_t
  * the context of the RX thread. 
  *
  * @param[in] handle_recieved_message_cb is a callback called before signaling that the message
- * was recieved. 
+ * was recieved. Allows shared data to be set in a protected way.
  * @param[in] p_arg isa pointer to the arguments for the function.
  * @param[in] size is that size of the arguments. 
  * 
  */
 void npe_serial_interface_signal_response(handle_recieved_message_t handle_recieved_message_cb, void* p_arg, uint32_t size);
-void npe_serial_transmit_message_and_unlock(void);
+
+/** @brief Locks the TX thread if called from a context that is not the TX thread. If called from TX thread
+ * nothing is locked and the function returns false. This function should be called before setting up 
+ * a message to be transmitted to the serial port. 
+ *
+ * @return: true if called from thread not TX thread. False is called from TX thread. 
+ * 
+ */
 bool npe_serial_transmit_lock(void);
+
+/** @brief If the TX thread was locked (npe_serial_transmit_lock returns true) - call this 
+ * function to transmit message and unlock the thread.  
+ *
+ */
+void npe_serial_transmit_message_and_unlock(void);
+
+/** @brief Start the retry timer.
+ *
+ * @param[in] msec is a 16 bit unsigned int specifying the timeout in millseconds. 
+ * 
+ */
 void npe_serial_interface_start_retry_timer(uint16_t msec);
+
+/** @brief Cancels the retry timer.
+ * 
+ */
 void npe_serial_interface_cancel_retry_timer(void);
 
 #endif

@@ -484,10 +484,7 @@ void wf_gem_hci_manager_on_command_response_bluetooth_config_get_device_name(utf
 {
     printf("wf_gem_hci_manager_on_command_response_bluetooth_config_get_device_name\n");
 }
-void wf_gem_hci_manager_on_command_response_bluetooth_config_set_device_name(uint8_t error_code)
-{
-    printf("wf_gem_hci_manager_on_command_response_bluetooth_config_set_device_name\n");
-}
+
 
 
 
