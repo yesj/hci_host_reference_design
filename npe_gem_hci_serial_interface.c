@@ -25,6 +25,7 @@
 #include <pthread.h> 
 #include <stdbool.h>
 #include <libserialport.h>
+#include <errno.h>
 #include "npe_error_code.h"
 #include "wf_gem_hci_comms.h"
 #include "wf_gem_hci_manager_gymconnect.h"
@@ -170,8 +171,8 @@ static void* npe_serial_interface_transmit_thread(void *vargp)
                 m_tx_event &= ~NPE_HCI_TX_FLAG_RETRY;
                 if(m_callback.retry_timeout_cb)
                     m_callback.retry_timeout_cb();
-                pthread_join(retry_timer_thread_id, NULL);
                 
+                pthread_join(retry_timer_thread_id, NULL);
             }
 
 
@@ -207,7 +208,8 @@ static void* npe_serial_interface_receive_thread(void *vargp)
 
     while(1) 
     {
-        sp_wait(eventSet, 1);
+        sp_wait(eventSet, 0);
+        
         int byte_num = sp_nonblocking_read(port,byte_buff,512);
         if(byte_num > 0)
         {
@@ -225,13 +227,31 @@ static uint32_t npe_serial_interface_connect_to_port(const char* p_port)
     int err = sp_get_port_by_name(p_port, &port);
     if(err == SP_OK)
     {
+        
         err = sp_open(port, SP_MODE_READ_WRITE);
 
         if(err == SP_OK)
         {
+            // Configure comport - 
+            // Baud: 115200
+            // Data Bits: 8
+            // Stop Bits: 1
+            // Parity: None
+            // Flow Control: None
             err = sp_set_baudrate(port,115200);
-            if(err != SP_OK)
-                err_code = NPE_GEM_RESPONSE_SERIAL_OPEN_FAIL;
+            if(err != SP_OK) return NPE_GEM_RESPONSE_SERIAL_CONFIG_FAIL;
+
+            err = sp_set_flowcontrol (port, SP_FLOWCONTROL_NONE);
+            if(err != SP_OK) return NPE_GEM_RESPONSE_SERIAL_CONFIG_FAIL;
+
+            err = sp_set_bits(port, 8);
+            if(err != SP_OK) return NPE_GEM_RESPONSE_SERIAL_CONFIG_FAIL;
+
+            err = sp_set_stopbits(port, 1);
+            if(err != SP_OK) return NPE_GEM_RESPONSE_SERIAL_CONFIG_FAIL;
+
+            err = sp_set_parity(port, SP_PARITY_NONE);
+            if(err != SP_OK) return NPE_GEM_RESPONSE_SERIAL_CONFIG_FAIL;
         }
         else
         {
@@ -240,7 +260,7 @@ static uint32_t npe_serial_interface_connect_to_port(const char* p_port)
     }
     else
     {
-        err_code = NPE_GEM_RESPONSE_SERIAL_OPEN_FAIL;
+        err_code = NPE_GEM_RESPONSE_SERIAL_NO_COMPORT;
     }
     return (err_code);
 }
@@ -267,11 +287,7 @@ uint32_t npe_serial_interface_wait_for_response(check_if_wait_condition_met_cb_t
     struct timespec ts;
     int res;
 
-    gettimeofday(&tv, NULL);
-    ts.tv_sec = time(NULL) + timeInMs / 1000;
-    ts.tv_nsec = tv.tv_usec * 1000 + 1000 * 1000 * (timeInMs % 1000);
-    ts.tv_sec += ts.tv_nsec / (1000 * 1000 * 1000);
-    ts.tv_nsec %= (1000 * 1000 * 1000);
+    
 
     // TODO: Time out.
     pthread_mutex_lock(&rxMutex);
@@ -279,6 +295,11 @@ uint32_t npe_serial_interface_wait_for_response(check_if_wait_condition_met_cb_t
     // Check if this is the response we are watining for 
     while(waitCount-- > 0)
     {
+        gettimeofday(&tv, NULL);
+        ts.tv_sec = time(NULL) + timeInMs / 1000;
+        ts.tv_nsec = tv.tv_usec * 1000 + 1000 * 1000 * (timeInMs % 1000);
+        ts.tv_sec += ts.tv_nsec / (1000 * 1000 * 1000);
+        ts.tv_nsec %= (1000 * 1000 * 1000);
         res = pthread_cond_timedwait(&rxCond, &rxMutex, &ts);
 
         if(res == 0)
@@ -296,8 +317,13 @@ uint32_t npe_serial_interface_wait_for_response(check_if_wait_condition_met_cb_t
         }
     
         if(check_if_wait_condition_met_cb)
+        {
             if(check_if_wait_condition_met_cb(res))
+            {       
                 break;
+            }
+        }
+            
     }
     pthread_mutex_unlock(&rxMutex);
     return error_code;

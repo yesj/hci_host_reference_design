@@ -103,7 +103,9 @@ static one_second_timeout_t m_timeout_cb;
 static void npe_gem_hci_library_interface_parse_bytes(uint8_t* byte_buff, int byte_num)
 {
     for(int i = 0; i < byte_num;i++)
+    {
         wf_gem_hci_comms_process_rx_byte(byte_buff[i]);
+    }
 }
 
       
@@ -318,6 +320,7 @@ static bool npe_gem_library_check_if_response_received(int response)
     {
         return true;
     }
+    
     return false;
 }
 
@@ -335,7 +338,7 @@ uint32_t npe_gem_hci_library_interface_init(one_second_timeout_t one_second_timo
         m_timeout_cb = one_second_timout_cb;
 
     npe_serial_interface_list_ports();
-    return(npe_serial_interface_init("COM6", &tx_callbacks));
+    return(npe_serial_interface_init("/dev/ttyUSB0", &tx_callbacks));
 
 }
 
@@ -365,7 +368,7 @@ uint32_t npe_hci_library_send_command_bluetooth_config_set_device_name(utf8_data
     else
         wf_gem_hci_manager_send_command_bluetooth_config_set_device_name(messageToSend.args.bt_config_set_device_name.bluetooth_name);
  
-
+    
     uint32_t res = npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received);
 
     assert(receivedMessage.message_class_id == WF_GEM_HCI_MSG_CLASS_BT_CONFIG);
@@ -769,6 +772,7 @@ void wf_gem_hci_manager_on_cancel_retry_timer(void)
 void wf_gem_hci_manager_on_command_send_failure(wf_gem_hci_comms_message_t* message)
 {
     printf("wf_gem_hci_manager_on_command_send_failure\n");
+    fflush(stdout);
     assert(false);
 }
 
