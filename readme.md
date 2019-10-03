@@ -4,4 +4,4 @@ The hci_host_reference_design is a simple CLI application interfacing to GEM ser
 This application requires the libserialport library. This is a free, cross platform 'C' based serial port library available from sigrok.org.
 
 # Architecture
-![stack](https://npeinc-my.sharepoint.com/:i:/g/personal/sebastian_npe-inc_com/ERLEjk-qSFBAqCRhsxoYiOUBKMNU6Wu8DmUGZywVmBpi9w?e=h0uyVd)
+![stack](./img/hci_reference_design.png)
