@@ -11,6 +11,7 @@ The 'main' module implements the UI as a simple command line interface and also 
 
 The CLI has the following options:
 Command | Name | Description
+------- | ---- | -----------
 'h' | help              | Prints the Help menu
 'a' | start advertising | Starts Advertising on the GEM
 's' | stop advertising  | Stops Advertising on the GEM
