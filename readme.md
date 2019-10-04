@@ -82,4 +82,8 @@ sudo mycc /dev/ttyUSB0
 
 Where COMX and /dev/ttyUSB0 correspond to the serial port to which GEM is connected. 
 
+##  📄 License
+
+This package is covered under the NPE License
+
 
