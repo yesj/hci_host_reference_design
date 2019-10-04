@@ -10,6 +10,7 @@ This application requires the libserialport library. This is a free, cross platf
 The 'main' module implements the UI as a simple command line interface and also generates simulated data which is sent to the GEM at 1Hz. 
 
 The CLI has the following options:
+
 |Command | Name | Description |
 |------- | ---- | ----------- |
 |'h' | help              | Prints the Help menu |
