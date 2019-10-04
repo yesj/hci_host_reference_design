@@ -56,7 +56,7 @@ In addition, at least the following dependencies are required:
 - [libserialport](https://sigrok.org/wiki/Libserialport)
 - pthreads 
 
-To build and run on *Windows* need to set up [MSYS2 (MinGW-w64 toolchain)](https://www.msys2.org/).
+To build and run on **Windows** need to set up [MSYS2 (MinGW-w64 toolchain)](https://www.msys2.org/).
 
 For building libserialport on MSYS2
 - [Good Overview](https://sigrok.org/wiki/Windows#Native_build_using_MSYS2)
@@ -68,7 +68,7 @@ The readme and script are very useful.
 To run the application, once it is built, simply type:
 
 // On Windows
-mycc COMX 
+mycc COM*X* 
 
 // In Linux, other
 sudo mycc /dev/ttyUSB0
