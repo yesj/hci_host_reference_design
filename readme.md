@@ -10,17 +10,17 @@ This application requires the libserialport library. This is a free, cross platf
 The 'main' module implements the UI as a simple command line interface and also generates simulated data which is sent to the GEM at 1Hz. 
 
 The CLI has the following options:
-Command | Name | Description
-------- | ---- | -----------
-'h' | help              | Prints the Help menu
-'a' | start advertising | Starts Advertising on the GEM
-'s' | stop advertising  | Stops Advertising on the GEM
-'i' | goto IDLE         | Puts the GEM into the IDLE stte
-'u' | goto IN-USE       | Puts the GEM into the IN-USE state
-'p' | goto PAUSED       | Puts the GEM into the PAUSED state
-'f' | goto FINISHED     | Puts the GEM in tot he FINISHED state
-'+' | increase grade    | Increases the grade sent to the GEM by 5%
-'-' | decrease grade    | Decreases the grade sent to the GEM by 5%
-'q' | quit              | Quits the application
+|Command | Name | Description |
+|------- | ---- | ----------- |
+|'h' | help              | Prints the Help menu |
+|'a' | start advertising | Starts Advertising on the GEM |
+|'s' | stop advertising  | Stops Advertising on the GEM |
+|'i' | goto IDLE         | Puts the GEM into the IDLE state |
+|'u' | goto IN-USE       | Puts the GEM into the IN-USE state |
+|'p' | goto PAUSED       | Puts the GEM into the PAUSED state |
+|'f' | goto FINISHED     | Puts the GEM in tot he FINISHED state |
+|'+' | increase grade    | Increases the grade sent to the GEM by 5% |
+|'-' | decrease grade    | Decreases the grade sent to the GEM by 5% |
+|'q' | quit              | Quits the application |
 
 # Installation
