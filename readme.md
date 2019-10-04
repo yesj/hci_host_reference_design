@@ -59,8 +59,9 @@ In addition, at least the following dependencies are required:
 To build and run on **Windows** need to set up [MSYS2 (MinGW-w64 toolchain)](https://www.msys2.org/).
 
 For building libserialport on MSYS2
-- [Good Overview](https://sigrok.org/wiki/Windows#Native_build_using_MSYS2)
-- [Readme and Script](https://sigrok.org/gitweb/?p=sigrok-util.git;a=tree;f=cross-compile/msys2)
+
+* [Good Overview](https://sigrok.org/wiki/Windows#Native_build_using_MSYS2)
+* [Readme and Script](https://sigrok.org/gitweb/?p=sigrok-util.git;a=tree;f=cross-compile/msys2)
 
 The readme and script are very useful.
 
