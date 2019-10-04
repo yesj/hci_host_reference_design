@@ -49,7 +49,11 @@ This application interfaces to a standard UART serial port. The settings (set by
 
 
 # Installation
-This application may be built from source by cloning and running make. 
+This application may be built from source by cloning and running make. The project includes submodules, so be sure to run:
+
+git submodule update --init --recursive 
+
+... before attempting to build. 
 
 In addition, at least the following dependencies are required:
 
