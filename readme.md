@@ -69,9 +69,11 @@ The readme and script are very useful.
 To run the application, once it is built, simply type:
 
 // On Windows
+
 mycc COM*X* 
 
 // In Linux, other
+
 sudo mycc /dev/ttyUSB0
 
 Where COMX and /dev/ttyUSB0 correspond to the serial port to which GEM is connected. 
