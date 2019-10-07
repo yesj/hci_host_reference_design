@@ -134,7 +134,7 @@ int main(int argc, char *argv[])
     while(waitForPingResponse) 
     {
         sleep(1);
-       
+        printf("Send Ping\n"); fflush(stdout);
         err = npe_hci_library_send_ping();
 
         if(err == NPE_GEM_RESPONSE_OK)
@@ -142,7 +142,7 @@ int main(int argc, char *argv[])
         else if(err == NPE_GEM_RESPONSE_RETRIES_EXHAUSTED)
             printf("Retries waiting for response exhausted\n");
         else if(err == NPE_GEM_RESPONSE_TIMEOUT_OUT)
-            printf("Wait for response timed out");      
+            printf("Wait for response timed out\n");      
         fflush(stdout); 
     }
 
