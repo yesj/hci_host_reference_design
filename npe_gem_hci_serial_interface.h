@@ -21,7 +21,7 @@
 #define __NPE_GEM_HCI_SERIAL_INTERFACE__
 
 typedef void (*handle_recieved_message_t)(void*, uint32_t);     // Handles a complete message on rx thread.
-typedef bool (*check_if_wait_condition_met_cb_t)(int);          // Processes a recieved message after it has been receive and signaled by rx thread
+typedef bool (*check_if_wait_condition_met_cb_t)(void);          // Processes a recieved message after it has been receive and signaled by rx thread
 typedef void (*parse_bytes_t)(uint8_t*, int);                   // Process bytes received on rx thread. 
 typedef void (*transmit_message_t)(void);                       // Transmit message in tx thread
 typedef void (*timeout_t)(void);                                // 1 Hz timeout on tx thread
@@ -35,10 +35,7 @@ typedef struct {
     retry_timeout_t retry_timeout_cb;           // Called by TX thread on retry timeout
 } npe_serial_interface_callbacks_t;
 
-/** @brief Lists all ports available. Probably does not work on Android.
- * 
- */
-void npe_serial_interface_list_ports(void);
+
 
 /** @brief Initialize and open the comport. Defaults to 115200, 8 bits, 1 stop, no parity.
  *
@@ -51,6 +48,11 @@ void npe_serial_interface_list_ports(void);
  *          ::NPE_GEM_RESPONSE_SERIAL_CONFIG_FAIL
  */
 uint32_t npe_serial_interface_init(const char* p_port, npe_serial_interface_callbacks_t* p_callbacks);
+
+/** @brief Lists all ports available. Probably does not work on Android.
+ * 
+ */
+void npe_serial_interface_list_ports(void);
 
 /** @brief Sends a single byte to the comport. Should be called in the TX thread context.
  *

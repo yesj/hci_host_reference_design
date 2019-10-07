@@ -31,47 +31,33 @@
 #include "wf_gem_hci_manager_gymconnect.h"
 #include "npe_gem_hci_serial_interface.h"
 
-#define NPE_HCI_TX_FLAG_SEND_MSG    ((uint32_t) 0x00000001)
-#define NPE_HCI_TX_FLAG_TIMEOUT     ((uint32_t) 0x00000002)
-#define NPE_HCI_TX_FLAG_RETRY       ((uint32_t) 0x00000004)
+// TX thread events. 
+#define NPE_HCI_TX_FLAG_SEND_MSG    ((uint32_t) 0x00000001) // Send a message to GEM
+#define NPE_HCI_TX_FLAG_TIMEOUT     ((uint32_t) 0x00000002) // Timeout occurred. 
+#define NPE_HCI_TX_FLAG_RETRY       ((uint32_t) 0x00000004) // Retry message.
 
 // Threading local variables. 
 static pthread_mutex_t rxMutex, txMutex;
 static pthread_cond_t rxCond, txCond;
 static pthread_t rx_thread_id, tx_thread_id, timer_thread_id, retry_timer_thread_id; 
 
-static uint32_t m_tx_event; 
+static uint32_t m_tx_event;     // Events to process on TX thread.
 
 // Libserialport local variables.
 static struct sp_port *port;
 
 // static callbacks 
-// static parse_bytes_t m_got_data_cb;
-// static transmit_message_t m_tx_msg_cb;
-// static timeout_t m_timeout_cb;
-// m_retry_timeout_cb
 static npe_serial_interface_callbacks_t m_callback;
 
-void npe_serial_interface_list_ports(void) {
-    int i;
-    struct sp_port **ports;
-    
-    int error = sp_list_ports(&ports);
-    if (error == SP_OK) {
-        for (i = 0; ports[i]; i++) 
-        {
-            printf("Found port: '%s'\n", sp_get_port_name(ports[i]));
-        }
-        sp_free_port_list(ports);
-    } 
-    else 
-    {
-        printf("No serial devices detected\n");
-    }
-    printf("\n");
-}
 
 
+/** @brief Executes Retry Timer Thread. Timer events pushed to TX thread. 
+ *
+ * @param[in] vargp pointer to variable args - not used. 
+ *
+ * @return  NULL
+ * 
+ */
 static void* npe_serial_interface_retry_timer(void* vargp)
 {
     struct timespec ts;
@@ -99,7 +85,14 @@ static void* npe_serial_interface_retry_timer(void* vargp)
 
 }
 
-
+/** @brief Executes 1Hz Timer Thread. Timer events pushed to TX thread. 
+ * Never returns.
+ *
+ * @param[in] vargp pointer to variable args - not used. 
+ *
+ * @return  NULL
+ * 
+ */
 static void* npe_serial_interface_timer_thread(void *vargp)
 {
     while(1)
@@ -117,28 +110,13 @@ static void* npe_serial_interface_timer_thread(void *vargp)
     return NULL;
 }
 
-bool npe_serial_transmit_lock(void)
-{
-    // Check if the calling function is
-    // on the same thread as we are. If yes
-    // then no need to put it on the thread. 
-    if(tx_thread_id == pthread_self())
-    {
-        //pthread_mutex_unlock(&txMutex);
-         return(false);
-    }
-    pthread_mutex_lock(&txMutex);
-    return true;
-}
-
-void npe_serial_transmit_message_and_unlock(void)
-{
-    m_tx_event |= NPE_HCI_TX_FLAG_SEND_MSG;
-    pthread_cond_signal(&txCond);
-    pthread_mutex_unlock(&txMutex);
-}
-
-
+/** @brief Executes TX Thread. Never returns.
+ *
+ * @param[in] vargp pointer to variable args - not used. 
+ *
+ * @return  NULL
+ * 
+ */
 static void* npe_serial_interface_transmit_thread(void *vargp) 
 {   
 
@@ -182,8 +160,13 @@ static void* npe_serial_interface_transmit_thread(void *vargp)
     return NULL;
 }
 
-// A normal C function that is executed as a thread  
-// when its name is specified in pthread_create() 
+/** @brief Executes RX Thread. Never returns.
+ *
+ * @param[in] vargp pointer to variable args - not used. 
+ *
+ * @return  NULL
+ * 
+ */
 static void* npe_serial_interface_receive_thread(void *vargp) 
 { 
     uint8_t byte_buff[512];
@@ -216,6 +199,15 @@ static void* npe_serial_interface_receive_thread(void *vargp)
     return NULL; 
 } 
 
+/** @brief Connect to, open and configure COMPORT. 
+ *
+ * @param[in] p_port is a string that specifies the comport (e.g. "COM6").
+ *
+ * @return  ::NPE_GEM_RESPONSE_OK
+ *          ::NPE_GEM_RESPONSE_SERIAL_NO_COMPORT
+ *          ::NPE_GEM_RESPONSE_SERIAL_OPEN_FAIL
+ *          ::NPE_GEM_RESPONSE_SERIAL_CONFIG_FAIL
+ */
 static uint32_t npe_serial_interface_connect_to_port(const char* p_port)
 {
     uint32_t err_code = NPE_GEM_RESPONSE_OK;
@@ -268,88 +260,16 @@ static uint32_t npe_serial_interface_connect_to_port(const char* p_port)
     return (err_code);
 }
 
-void npe_serial_interface_signal_response(handle_recieved_message_t handle_recieved_message_cb, void* p_arg, uint32_t size)
-{
-    pthread_mutex_lock(&rxMutex);
-
-    if(handle_recieved_message_cb)
-        handle_recieved_message_cb(p_arg, size);
-
-    pthread_cond_signal(&rxCond);
-    pthread_mutex_unlock(&rxMutex);
-}
-
-
-uint32_t npe_serial_interface_wait_for_response(check_if_wait_condition_met_cb_t check_if_wait_condition_met_cb)
-{
-
-    uint32_t error_code = NPE_GEM_RESPONSE_RETRIES_EXHAUSTED;
-    uint8_t waitCount = 10; // Wait a maximum 10 times to get the correct response. 
-    int timeInMs = (WF_GEM_HCI_DEFAULT_MAX_COMMAND_RETRY_ATTEMPTS+1) * WF_GEM_HCI_DEFAULT_COMMAND_TIMEOUT_MS + 50;
-    struct timeval tv;
-    struct timespec ts;
-    int res;
-
-    
-
-    // TODO: Time out.
-    pthread_mutex_lock(&rxMutex);
-    
-    // Check if this is the response we are watining for 
-    while(waitCount-- > 0)
-    {
-        gettimeofday(&tv, NULL);
-        ts.tv_sec = time(NULL) + timeInMs / 1000;
-        ts.tv_nsec = tv.tv_usec * 1000 + 1000 * 1000 * (timeInMs % 1000);
-        ts.tv_sec += ts.tv_nsec / (1000 * 1000 * 1000);
-        ts.tv_nsec %= (1000 * 1000 * 1000);
-
-        res = pthread_cond_timedwait(&rxCond, &rxMutex, &ts);
-
-        if(res == 0)
-        {
-            error_code = NPE_GEM_RESPONSE_OK;
-        }
-        else if(res == ETIMEDOUT)
-        {
-            error_code = NPE_GEM_RESPONSE_TIMEOUT_OUT;
-        }           
-        else
-        {
-            // Otherwise something more serious went wrong. 
-            assert(false);
-        }
-    
-        if(check_if_wait_condition_met_cb)
-        {
-            if(check_if_wait_condition_met_cb(res))
-            {       
-                break;
-            }
-        }
-            
-    }
-    pthread_mutex_unlock(&rxMutex);
-
-    return error_code;
-}
-
-uint32_t npe_serial_interface_send_byte(uint8_t tx_byte)
-{
-    uint32_t error_code = NPE_GEM_RESPONSE_OK;
-    uint8_t buffer[1];
-    buffer[0] = tx_byte;
-
-    int bytesWrittenOrError = sp_blocking_write(port, buffer, 1, 0);
-    if(bytesWrittenOrError <= 0)
-    {
-        error_code = NPE_GEM_RESPONSE_UNABLE_TO_WRITE;
-    }
-	return(error_code);
-    
-}
-   
-
+/** @brief Initialize and open the comport. Defaults to 115200, 8 bits, 1 stop, no parity.
+ *
+ * @param[in] p_port is a string that specifies the comport (e.g. "COM6").
+ * @param[in] p_callbacks is a struct of all callbacks.
+ *
+ * @return  ::NPE_GEM_RESPONSE_OK
+ *          ::NPE_GEM_RESPONSE_SERIAL_NO_COMPORT
+ *          ::NPE_GEM_RESPONSE_SERIAL_OPEN_FAIL
+ *          ::NPE_GEM_RESPONSE_SERIAL_CONFIG_FAIL
+ */
 uint32_t npe_serial_interface_init(const char* p_port, npe_serial_interface_callbacks_t* p_callback)
 {
     uint32_t err_code;
@@ -405,7 +325,175 @@ uint32_t npe_serial_interface_init(const char* p_port, npe_serial_interface_call
     //pthread_join(thread_id, NULL);
 }
 
+/** @brief Lists all ports available. Probably does not work on Android.
+ * 
+ */
+void npe_serial_interface_list_ports(void) {
+    int i;
+    struct sp_port **ports;
+    
+    int error = sp_list_ports(&ports);
+    if (error == SP_OK) {
+        for (i = 0; ports[i]; i++) 
+        {
+            printf("Found port: '%s'\n", sp_get_port_name(ports[i]));
+        }
+        sp_free_port_list(ports);
+    } 
+    else 
+    {
+        printf("No serial devices detected\n");
+    }
+    printf("\n");
+}
 
+/** @brief Sends a single byte to the comport. Should be called in the TX thread context.
+ *
+ * @param[in] tx_byte is a a byte that will be sent to the comport. 
+ *
+ * @return  ::NPE_GEM_RESPONSE_OK
+ *          ::NPE_GEM_RESPONSE_UNABLE_TO_WRITE
+ */
+uint32_t npe_serial_interface_send_byte(uint8_t tx_byte)
+{
+    uint32_t error_code = NPE_GEM_RESPONSE_OK;
+    uint8_t buffer[1];
+    buffer[0] = tx_byte;
+
+    int bytesWrittenOrError = sp_blocking_write(port, buffer, 1, 0);
+    if(bytesWrittenOrError <= 0)
+    {
+        error_code = NPE_GEM_RESPONSE_UNABLE_TO_WRITE;
+    }
+	return(error_code);
+    
+}
+
+/** @brief Locks the TX thread if called from a context that is not the TX thread. If called from TX thread
+ * nothing is locked and the function returns false. This function should be called before setting up 
+ * a message to be transmitted to the serial port. 
+ *
+ * @return: true if called from thread not TX thread. False is called from TX thread. 
+ * 
+ */
+bool npe_serial_transmit_lock(void)
+{
+    // Check if the calling function is
+    // on the same thread as we are. If yes
+    // then no need to put it on the thread. 
+    if(tx_thread_id == pthread_self())
+    {
+        //pthread_mutex_unlock(&txMutex);
+         return(false);
+    }
+    pthread_mutex_lock(&txMutex);
+    return true;
+}
+
+/** @brief If the TX thread was locked (npe_serial_transmit_lock returns true) - call this 
+ * function to transmit message and unlock the thread.  
+ *
+ */
+void npe_serial_transmit_message_and_unlock(void)
+{
+    m_tx_event |= NPE_HCI_TX_FLAG_SEND_MSG;
+    pthread_cond_signal(&txCond);
+    pthread_mutex_unlock(&txMutex);
+}
+
+/** @brief Once a message is received on the RX thread, this function should be called
+ * to signal any other threads waiting for this message. This function should be called in 
+ * the context of the RX thread. 
+ *
+ * @param[in] handle_recieved_message_cb is a callback called before signaling that the message
+ * was recieved. Allows shared data to be set in a protected way.
+ * @param[in] p_arg isa pointer to the arguments for the function.
+ * @param[in] size is that size of the arguments. 
+ * 
+ */
+void npe_serial_interface_signal_response(handle_recieved_message_t handle_recieved_message_cb, void* p_arg, uint32_t size)
+{
+    pthread_mutex_lock(&rxMutex);
+
+    if(handle_recieved_message_cb)
+        handle_recieved_message_cb(p_arg, size);
+
+    pthread_cond_signal(&rxCond);
+    pthread_mutex_unlock(&rxMutex);
+}
+
+/** @brief Waits to receive a correctly formatted response from GEM. If a response is  
+ * recieved then it will call the supplied callback, which can decide if the desired 
+ * response was recieved. If the callback returns false the wait is retried up to 10 times
+ * The wait for the response is WF_GEM_HCI_DEFAULT_MAX_COMMAND_RETRY_ATTEMPTS+1) * 
+ * WF_GEM_HCI_DEFAULT_COMMAND_TIMEOUT_MS + 50.
+ *
+ * @param[in] check_if_wait_condition_met_cb is a callback called when a response recieved. 
+ * It should return true is the desired response has been received.  
+ *
+ * @return  ::NPE_GEM_RESPONSE_OK
+ *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED -> got responses but not the one we were looking for
+ *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT -> No response received within the timeout
+ */
+uint32_t npe_serial_interface_wait_for_response(check_if_wait_condition_met_cb_t check_if_wait_condition_met_cb)
+{
+
+    uint32_t error_code = NPE_GEM_RESPONSE_RETRIES_EXHAUSTED;
+    uint8_t waitCount = 10; // Wait a maximum 10 times to get the correct response. 
+    int timeInMs = (WF_GEM_HCI_DEFAULT_MAX_COMMAND_RETRY_ATTEMPTS+1) * WF_GEM_HCI_DEFAULT_COMMAND_TIMEOUT_MS + 50;
+    struct timeval tv;
+    struct timespec ts;
+    int res;
+
+    
+
+    // TODO: Time out.
+    pthread_mutex_lock(&rxMutex);
+    
+    // Check if this is the response we are watining for 
+    while(waitCount-- > 0)
+    {
+        gettimeofday(&tv, NULL);
+        ts.tv_sec = time(NULL) + timeInMs / 1000;
+        ts.tv_nsec = tv.tv_usec * 1000 + 1000 * 1000 * (timeInMs % 1000);
+        ts.tv_sec += ts.tv_nsec / (1000 * 1000 * 1000);
+        ts.tv_nsec %= (1000 * 1000 * 1000);
+
+        res = pthread_cond_timedwait(&rxCond, &rxMutex, &ts);
+
+        if(res == 0)
+        {
+            error_code = NPE_GEM_RESPONSE_OK;
+        }
+        else if(res == ETIMEDOUT)
+        {
+            error_code = NPE_GEM_RESPONSE_TIMEOUT_OUT;
+        }           
+        else
+        {
+            // Otherwise something more serious went wrong. 
+            assert(false);
+        }
+    
+        if(check_if_wait_condition_met_cb)
+        {
+            if(check_if_wait_condition_met_cb())
+            {       
+                break;
+            }
+        }
+            
+    }
+    pthread_mutex_unlock(&rxMutex);
+
+    return error_code;
+}
+
+ /** @brief Start the retry timer.
+ *
+ * @param[in] msec is a 16 bit unsigned int specifying the timeout in millseconds. 
+ * 
+ */  
 void npe_serial_interface_start_retry_timer(uint16_t msec)
 {
 
@@ -414,7 +502,9 @@ void npe_serial_interface_start_retry_timer(uint16_t msec)
     assert(res == 0);
 }
 
-
+/** @brief Cancels the retry timer.
+ * 
+ */
 void npe_serial_interface_cancel_retry_timer(void)
 {
     int res = pthread_cancel(retry_timer_thread_id);
@@ -423,120 +513,3 @@ void npe_serial_interface_cancel_retry_timer(void)
 
 }
    
-
-
-void wf_gem_hci_manager_on_command_response_system_ping(void)
-{
-    printf("wf_gem_hci_manager_on_command_response_system_ping\n");
-}
-
-void wf_gem_hci_manager_on_command_response_system_shutdown(uint8_t error_code)
-{
-printf("wf_gem_hci_manager_on_command_response_system_shutdown\n");
-}
-
-
-
-void wf_gem_hci_manager_on_command_response_system_get_gem_module_version_info(wf_gem_hci_system_gem_module_version_info_t *version_info)
-{
-    printf("wf_gem_hci_manager_on_command_response_system_get_gem_module_version_info\n");
-}
-
-
-void wf_gem_hci_manager_on_command_response_system_reset(uint8_t error_code)
-{
-    printf("wf_gem_hci_manager_on_command_response_system_reset\n");
-}
-
-void wf_gem_hci_manager_on_event_system_powerup(void)
-{
-    printf("wf_gem_hci_manager_on_event_system_powerup\n");
-}
-
-
-void wf_gem_hci_manager_on_event_system_shutdown(void)
-{
-    printf("wf_gem_hci_manager_on_event_system_shutdown\n");
-}
-
-// +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
-// 		Bluetooth Control Command Responses, Events
-// +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
-void wf_gem_hci_manager_on_command_response_bluetooth_control_get_bluetooth_state(wf_gem_hci_bluetooth_state_e bluetooth_state)
-{
-    printf("wf_gem_hci_manager_on_command_response_bluetooth_control_get_bluetooth_state\n");
-}
-
-void wf_gem_hci_manager_on_event_bluetooth_control_advertising_timed_out(void)
-{
-    printf("wf_gem_hci_manager_on_event_bluetooth_control_advertising_timed_out\n");
-    fflush(stdout);
-}
-void wf_gem_hci_manager_on_event_bluetooth_control_connected(void)
-{
-    printf("wf_gem_hci_manager_on_event_bluetooth_control_connected\n");
-}
-void wf_gem_hci_manager_on_event_bluetooth_control_disconnected(bool peripheral_solicited, bool central_solicited)
-{
-    printf("wf_gem_hci_manager_on_event_bluetooth_control_disconnected\n");
-}
-
-
-
-// +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
-// Bluetooth Configuration Command Responses
-// +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
-void wf_gem_hci_manager_on_command_response_bluetooth_config_get_device_name(utf8_data_t* device_name)
-{
-    printf("wf_gem_hci_manager_on_command_response_bluetooth_config_get_device_name\n");
-}
-
-
-
-
-
-void wf_gem_hci_manager_gymconnect_on_command_send_failure(wf_gem_hci_comms_message_t *message)
-{
-    printf("wf_gem_hci_manager_gymconnect_on_command_send_failure\n");
-}
-
-void wf_gem_hci_manager_gymconnect_on_command_response_get_fe_type(wf_gem_hci_gymconnect_fitness_equipment_type_e fe_type)
-{
-    printf("wf_gem_hci_manager_gymconnect_on_command_response_get_fe_type\n");
-}
-void wf_gem_hci_manager_gymconnect_on_command_response_set_fe_type(uint8_t error_code)
-{
-    printf("wf_gem_hci_manager_gymconnect_on_command_response_set_fe_type\n");
-}
-
-void wf_gem_hci_manager_gymconnect_on_command_response_get_fe_state(wf_gem_hci_gymconnect_fitness_equipment_state_e fe_state)
-{
-    printf("wf_gem_hci_manager_gymconnect_on_command_response_get_fe_state\n");
-}
-void wf_gem_hci_manager_gymconnect_on_command_response_set_fe_state(uint8_t error_code)
-{
-    printf("wf_gem_hci_manager_gymconnect_on_command_response_set_fe_state\n");
-}
-
-void wf_gem_hci_manager_gymconnect_on_command_response_get_fe_program_name(utf8_data_t *program_name)
-{
-    printf("wf_gem_hci_manager_gymconnect_on_command_response_get_fe_program_name\n");
-}
-void wf_gem_hci_manager_gymconnect_on_command_response_set_fe_program_name(uint8_t error_code)
-{
-    printf("wf_gem_hci_manager_gymconnect_on_command_response_set_fe_program_name\n");
-}
-
-void wf_gem_hci_manager_gymconnect_on_workout_data_update_complete(uint8_t error_code)
-{
-    //printf("wf_gem_hci_manager_gymconnect_on_workout_data_update_complete\n");
-}
-
-void wf_gem_hci_manager_gymconnecton_event_heart_rate_value_received(uint16_t heart_rate_value)
-{
-    printf("wf_gem_hci_manager_gymconnecton_event_heart_rate_value_received\n");
-}
-void wf_gem_hci_manager_gymconnecton_event_cadence_value_received(uint16_t cadence_value)
-{
-    printf("wf_gem_hci_manager_gymconnecton_event_cadence_value_received\n");
-}

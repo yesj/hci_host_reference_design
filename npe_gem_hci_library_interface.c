@@ -31,14 +31,17 @@
 
 typedef void (*npe_gem_fp)(void); // Generic function pointer
 
-
+/** @brief Format of respnse from GEM 
+ *
+ */
 typedef union 
 {
-    uint8_t message_class_id;
-    uint8_t message_id;
     standard_response_t response;
 } npe_hci_response_t;
 
+/** @brief Union of GEM messages
+ *
+ */
 typedef union 
 {
     struct {
@@ -87,6 +90,9 @@ struct {
 
 } npe_inc_function_args;
 
+/** @brief Describes a GEM message in concrete format 
+ *
+ */
 typedef struct 
 {
     uint8_t message_class_id;
@@ -95,11 +101,14 @@ typedef struct
 } npe_hci_function_info_type;
 
 
-static npe_hci_response_t m_last_response;
-static wf_gem_hci_comms_message_t receivedMessage;
-static npe_hci_function_info_type messageToSend;
-static one_second_timeout_t m_timeout_cb;
+static npe_hci_response_t m_last_response;          // Last response received from GEM
+static wf_gem_hci_comms_message_t receivedMessage;  // Last received message from GEM
+static npe_hci_function_info_type messageToSend;    // Message to send to GEM
+static one_second_timeout_t m_timeout_cb;           // Function to call on 1 second timeout. 
 
+/** @brief Called by RX THREAD. Parses received bytes from GEM. 
+ *
+ */
 static void npe_gem_hci_library_interface_parse_bytes(uint8_t* byte_buff, int byte_num)
 {
     for(int i = 0; i < byte_num;i++)
@@ -109,7 +118,9 @@ static void npe_gem_hci_library_interface_parse_bytes(uint8_t* byte_buff, int by
 }
 
       
-
+/** @brief Called by TX THREAD. Sends a HCI ANT Config Message to GEM. 
+ *
+ */
 static void npe_hci_library_send_ant_config_message(uint8_t message_id)
 {
     switch(message_id)
@@ -143,7 +154,9 @@ static void npe_hci_library_send_ant_config_message(uint8_t message_id)
     }
 }
 
-// Called by transmit thread 
+/** @brief Called by TX THREAD. Sends a HCI Gymconnect Message to GEM. 
+ *
+ */
 static void npe_hci_library_send_gymconnect_message(uint8_t message_id)
 {
     switch(message_id)
@@ -175,7 +188,9 @@ static void npe_hci_library_send_gymconnect_message(uint8_t message_id)
     }
 }
 
-// Called by transmit thread 
+/** @brief Called by TX THREAD. Sends a HCI Bluetooth Control Message to GEM. 
+ *
+ */
 static void npe_hci_library_send_bt_control_message(uint8_t message_id)
 {
     switch(message_id)
@@ -196,6 +211,10 @@ static void npe_hci_library_send_bt_control_message(uint8_t message_id)
         }
     }
 }
+
+/** @brief Called by TX THREAD. Sends a HCI Bluetooth Device Info Message to GEM. 
+ *
+ */
 static void npe_hci_library_send_bt_device_info_message(uint8_t message_id)
 {
     switch(message_id)
@@ -233,6 +252,9 @@ static void npe_hci_library_send_bt_device_info_message(uint8_t message_id)
     }
 }
 
+/** @brief Called by TX THREAD. Sends a HCI Bluetooth Config Message to GEM. 
+ *
+ */
 static void npe_hci_library_send_bt_config_message(uint8_t message_id)
 {
     switch(message_id)
@@ -244,6 +266,10 @@ static void npe_hci_library_send_bt_config_message(uint8_t message_id)
         }
     }
 }
+
+/** @brief Called by TX THREAD. Sends a HCI System Message to GEM. 
+ *
+ */
 static void npe_hci_library_send_system_message(uint8_t message_id)
 {
     switch(message_id)
@@ -259,7 +285,10 @@ static void npe_hci_library_send_system_message(uint8_t message_id)
 
 
 
-
+/** @brief Called by TX THREAD. Sends a HCI message to GEM. This should be 
+ * called only once local struct messageToSend has been populated. 
+ *
+ */
 static void npe_hci_library_send_message(void)
 {
     switch(messageToSend.message_class_id)
@@ -300,7 +329,11 @@ static void npe_hci_library_send_message(void)
     }
 }
 
-// 1Hz timer
+/** @brief CALLED BY 1 SECOND TIMER thread and calls application func
+ *
+ * @return  ::true if response we are waiting on has been recieved
+ * 
+ */
 static void npe_hci_library_timeout(void)
 {
     if(m_timeout_cb)
@@ -309,12 +342,23 @@ static void npe_hci_library_timeout(void)
     }
 }
 
+/** @brief CALLED BY RX THREAD to copy received message to local structure.
+ *
+ * @param[in] message is a pointer to the received message.
+ * @param[in] size is a 4-byte unsigned value denoting the size of the recieved message in bytes.
+ */
 static void npe_gem_hci_library_process_received_msg(void* message, uint32_t size)
 {
+    // TO DO - ASSERT SIZE DOES NOT EXCEED LOCAL BUFFER
     memcpy(&receivedMessage, message, size);
 }
 
-static bool npe_gem_library_check_if_response_received(int response)
+/** @brief CALLED BY RX THREAD to check if RX condition has been met.
+ *
+ * @return  ::true if response we are waiting on has been recieved
+ * 
+ */
+static bool npe_gem_library_check_if_response_received(void)
 {
     if(receivedMessage.message_class_id == messageToSend.message_class_id && receivedMessage.message_id == messageToSend.message_id)
     {
@@ -324,8 +368,17 @@ static bool npe_gem_library_check_if_response_received(int response)
     return false;
 }
 
-
-uint32_t npe_gem_hci_library_interface_init(const char* p_port_name, one_second_timeout_t one_second_timout_cb)
+/** @brief Initializes the NPE GEM HCI library and serial interface.
+ *
+ * @param[in] p_comport is a string denoting the name of the port to open.
+ * @param[in] one_second_timeout_cb is an unsigned char (1 octet) denoting the channel number to query.
+ *
+ * @return  ::NPE_GEM_RESPONSE_OK
+ *          ::NPE_GEM_RESPONSE_SERIAL_NO_COMPORT
+ *          ::NPE_GEM_RESPONSE_SERIAL_OPEN_FAIL
+ *          ::NPE_GEM_RESPONSE_SERIAL_CONFIG_FAIL
+ */
+uint32_t npe_gem_hci_library_interface_init(const char* p_comport, one_second_timeout_t one_second_timout_cb)
 {
     npe_serial_interface_callbacks_t tx_callbacks;
     tx_callbacks.parse_bytes_cb = npe_gem_hci_library_interface_parse_bytes;
@@ -338,10 +391,16 @@ uint32_t npe_gem_hci_library_interface_init(const char* p_port_name, one_second_
         m_timeout_cb = one_second_timout_cb;
 
     npe_serial_interface_list_ports();
-    return(npe_serial_interface_init(p_port_name, &tx_callbacks));
+    return(npe_serial_interface_init(p_comport, &tx_callbacks));
 
 }
 
+/** @brief Send Ping command to GEM.
+ *
+ * @return  ::NPE_GEM_RESPONSE_OK
+ *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
+ *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
+ */
 uint32_t npe_hci_library_send_ping(void)
 {
     bool locked = npe_serial_transmit_lock();
@@ -356,12 +415,21 @@ uint32_t npe_hci_library_send_ping(void)
     return(npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received));
 }
 
-uint32_t npe_hci_library_send_command_bluetooth_config_set_device_name(utf8_data_t* bluetoothName, standard_response_t* p_set_device_name_response)
+/** @brief Send the Bluetooth Device Name to the GEM.
+ *
+ * @param[in] bluetooth_name is a string denoting the bluetooth device name.
+ * @param[out] p_set_device_name_response is the response code recieved from the GEM
+ *
+ * @return  ::NPE_GEM_RESPONSE_OK
+ *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
+ *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
+ */
+uint32_t npe_hci_library_send_command_bluetooth_config_set_device_name(utf8_data_t* bluetooth_name, standard_response_t* p_set_device_name_response)
 {
     bool locked = npe_serial_transmit_lock(); 
     messageToSend.message_class_id = WF_GEM_HCI_MSG_CLASS_BT_CONFIG;
     messageToSend.message_id = WF_GEM_HCI_COMMAND_ID_BT_CONFIG_SET_DEVICE_NAME;
-    messageToSend.args.bt_config_set_device_name.bluetooth_name = bluetoothName;
+    messageToSend.args.bt_config_set_device_name.bluetooth_name = bluetooth_name;
     
     if(locked)
         npe_serial_transmit_message_and_unlock();
@@ -379,6 +447,15 @@ uint32_t npe_hci_library_send_command_bluetooth_config_set_device_name(utf8_data
     return(res);
 }
 
+/** @brief Send the Bluetooth Manufacturer Name to the GEM.
+ *
+ * @param[in] manufacturer_name is a string denoting the manufacturer name.
+ * @param[out] p_set_manufacturer_name_response is the response code recieved from the GEM
+ *
+ * @return  ::NPE_GEM_RESPONSE_OK
+ *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
+ *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
+ */
 uint32_t npe_hci_library_send_command_bluetooth_info_set_manufacturer_name(utf8_data_t* manufacturer_name, standard_response_t* p_set_manufacturer_name_response)
 {
     bool locked = npe_serial_transmit_lock();
@@ -400,8 +477,15 @@ uint32_t npe_hci_library_send_command_bluetooth_info_set_manufacturer_name(utf8_
     return(res);
 }
 
-
-
+/** @brief Send the Bluetooth Model Number to the GEM.
+ *
+ * @param[in] model_number is a string denoting the model number.
+ * @param[out] p_set_manufacturer_name_response is the response code recieved from the GEM
+ *
+ * @return  ::NPE_GEM_RESPONSE_OK
+ *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
+ *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
+ */
 uint32_t npe_hci_library_send_command_bluetooth_info_set_model_number(utf8_data_t* model_number, standard_response_t* p_set_model_number_response)
 {
     bool locked = npe_serial_transmit_lock();
@@ -422,6 +506,15 @@ uint32_t npe_hci_library_send_command_bluetooth_info_set_model_number(utf8_data_
     return(res);
 }
 
+/** @brief Send the Bluetooth Serial Number to the GEM.
+ *
+ * @param[in] serial_number is a string denoting the serial number.
+ * @param[out] p_response_error_code is the response code recieved from the GEM
+ *
+ * @return  ::NPE_GEM_RESPONSE_OK
+ *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
+ *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
+ */
 uint32_t npe_hci_library_send_command_bluetooth_info_set_serial_number(utf8_data_t* serial_number, standard_response_t* p_set_serial_number_response)
 {
     bool locked = npe_serial_transmit_lock();
@@ -442,6 +535,15 @@ uint32_t npe_hci_library_send_command_bluetooth_info_set_serial_number(utf8_data
     return(res);
 }
 
+/** @brief Send the Bluetooth Hardware Revision to the GEM.
+ *
+ * @param[in] hardware_revision is a string denoting the hardware revision.
+ * @param[out] p_response is the error code recieved from the GEM
+ *
+ * @return  ::NPE_GEM_RESPONSE_OK
+ *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
+ *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
+ */
 uint32_t npe_hci_library_send_command_bluetooth_info_set_hardware_rev(utf8_data_t* hardware_revision, standard_response_t* p_response)
 {
     bool locked = npe_serial_transmit_lock();
@@ -462,6 +564,16 @@ uint32_t npe_hci_library_send_command_bluetooth_info_set_hardware_rev(utf8_data_
     p_response->error_code = m_last_response.response.error_code;
     return(res);
 }
+
+/** @brief Send the Bluetooth Firmware Revision to the GEM.
+ *
+ * @param[in] firmware_revision is a string denoting the firmware revision number.
+ * @param[out] p_response is the error code recieved from the GEM
+ *
+ * @return  ::NPE_GEM_RESPONSE_OK
+ *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
+ *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
+ */
 uint32_t npe_hci_library_send_command_bluetooth_info_set_firmware_rev(utf8_data_t* firmware_revision, standard_response_t* p_response)
 {
     bool locked = npe_serial_transmit_lock();
@@ -483,6 +595,18 @@ uint32_t npe_hci_library_send_command_bluetooth_info_set_firmware_rev(utf8_data_
     return(res);
 }
 
+/** @brief Send whether battery service should be included to the GEM.
+ *
+ * @param[in] battery_included 1 byte unsigned value denoting whether to enable battery service.
+ *            WF_GEM_HCI_BLUETOOTH_BATTERY_SERVICE_INCLUDE (0x01)
+ *            WF_GEM_HCI_BLUETOOTH_BATTERY_SERVICE_NOT_INCLUDE (0x00)
+ * @param[out] p_response is the error code recieved from the GEM
+ *
+ * @return  ::NPE_GEM_RESPONSE_OK
+ *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
+ *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
+ *          ::NPE_GEM_RESPONSE_INVALID_PARAMETER
+ */
 uint32_t npe_hci_library_send_command_bluetooth_info_set_battery_included(uint8_t battery_included, standard_response_t* p_response)
 {
     if(battery_included != WF_GEM_HCI_BLUETOOTH_BATTERY_SERVICE_NOT_INCLUDE &&
@@ -510,6 +634,14 @@ uint32_t npe_hci_library_send_command_bluetooth_info_set_battery_included(uint8_
     return(res);
 }
 
+/** @brief Starts bluetooth advertising on the GEM
+ *
+ * @param[out] p_advertising_start_response is the response code recieved from the GEM
+ *
+ * @return  ::NPE_GEM_RESPONSE_OK
+ *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
+ *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
+ */
 uint32_t npe_hci_library_send_command_bluetooth_control_start_advertising(standard_response_t* p_advertising_start_response)
 {
     uint32_t res;
@@ -533,6 +665,14 @@ uint32_t npe_hci_library_send_command_bluetooth_control_start_advertising(standa
     return(res);
 }
 
+/** @brief Stops bluetooth advertising on the GEM
+ *
+ * @param[out] p_advertising_stop_response is the response code recieved from the GEM
+ *
+ * @return  ::NPE_GEM_RESPONSE_OK
+ *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
+ *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
+ */
 uint32_t npe_hci_library_send_command_bluetooth_control_stop_advertising(standard_response_t* p_advertising_stop_response)
 {
     uint32_t res;
@@ -556,8 +696,15 @@ uint32_t npe_hci_library_send_command_bluetooth_control_stop_advertising(standar
     return(res);
 }
 
-
-
+/** @brief Send the ANT hardware revision to GEM 
+ *
+ * @param[in] hardware_version 1 byte unsigned value denoting ANT hardware revision.
+ * @param[out] p_response is the error code recieved from the GEM
+ *
+ * @return  ::NPE_GEM_RESPONSE_OK
+ *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
+ *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
+ */
 uint32_t npe_hci_library_send_command_ant_config_set_hardware_version(uint8_t hardware_version, standard_response_t* p_response)
 {
     bool locked = npe_serial_transmit_lock(); 
@@ -580,6 +727,15 @@ uint32_t npe_hci_library_send_command_ant_config_set_hardware_version(uint8_t ha
     return(res);
 }
 
+/** @brief Send the ANT model number to GEM 
+ *
+ * @param[in] model_number 2 byte unsigned value denoting ANT model number.
+ * @param[out] p_response is the error code recieved from the GEM
+ * 
+ * @return  ::NPE_GEM_RESPONSE_OK
+ *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
+ *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
+ */
 uint32_t npe_hci_library_send_command_ant_config_set_model_number(uint16_t model_number, standard_response_t* p_response)
 {
     bool locked = npe_serial_transmit_lock();
@@ -601,6 +757,16 @@ uint32_t npe_hci_library_send_command_ant_config_set_model_number(uint16_t model
     return(res);
 }
 
+/** @brief Send the ANT software version to GEM 
+ *
+ * @param[in] main 1 byte unsigned value denoting the main software version.
+ * @param[in] main 1 byte unsigned value denoting the supplemental software version.
+ * @param[out] p_response is the error code recieved from the GEM
+ *
+ * @return  ::NPE_GEM_RESPONSE_OK
+ *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
+ *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
+ */
 uint32_t npe_hci_library_send_command_ant_config_set_software_version(uint8_t main, uint8_t supplemental, standard_response_t* p_response)
 {
     bool locked = npe_serial_transmit_lock();
@@ -625,6 +791,15 @@ uint32_t npe_hci_library_send_command_ant_config_set_software_version(uint8_t ma
     return(res);
 }
 
+/** @brief Send the ANT serial number to GEM 
+ *
+ * @param[in] serial_number 4 byte unsigned value denoting ANT serial number.
+ * @param[out] p_response is the error code recieved from the GEM
+ *
+ * @return  ::NPE_GEM_RESPONSE_OK
+ *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
+ *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
+ */
 uint32_t npe_hci_library_send_command_ant_config_set_serial_number(uint32_t serial_number, standard_response_t* p_response)
 {
     bool locked = npe_serial_transmit_lock();
@@ -647,6 +822,15 @@ uint32_t npe_hci_library_send_command_ant_config_set_serial_number(uint32_t seri
     return(res);
 }
 
+/** @brief Set GEM controllable features
+ *
+ * @param[in] equipment_control_field_identifier 4 byte unsigned bitfield denoting denoting contollable feautures.
+ * @param[out] p_response is the error code recieved from the GEM
+ * 
+ * @return  ::NPE_GEM_RESPONSE_OK
+ *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
+ *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
+ */
 uint32_t npe_hci_library_send_command_gymconnect_set_supported_equipment_control_features(uint32_t equipment_control_field_identifier, standard_response_t* p_response)
 {
     bool locked = npe_serial_transmit_lock(); 
@@ -669,6 +853,15 @@ uint32_t npe_hci_library_send_command_gymconnect_set_supported_equipment_control
     return(res);
 }
 
+/** @brief Send the fitness equipment type to GEM 
+ *
+ * @param[in] fe_type is an enum denoting the fitness equipment type.
+ * @param[out] p_response is the error code recieved from the GEM
+ *
+ * @return  ::NPE_GEM_RESPONSE_OK
+ *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
+ *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
+ */
 uint32_t npe_hci_library_send_command_gymconnect_set_fe_type(wf_gem_hci_gymconnect_fitness_equipment_type_e fe_type, standard_response_t* p_response)
 {
     bool locked = npe_serial_transmit_lock();
@@ -692,6 +885,15 @@ uint32_t npe_hci_library_send_command_gymconnect_set_fe_type(wf_gem_hci_gymconne
     return(res);
 }
 
+/** @brief Send the fitness equipment state to GEM 
+ *
+ * @param[in] fe_state is an enum denoting the fitness equipment state.
+ * @param[out] p_fe_state_response is the response code recieved from the GEM
+ *
+ * @return  ::NPE_GEM_RESPONSE_OK
+ *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
+ *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
+ */
 uint32_t npe_hci_library_send_command_gymconnect_set_fe_state(wf_gem_hci_gymconnect_fitness_equipment_state_e fe_state, standard_response_t* p_fe_state_response)
 {
     uint32_t res;
@@ -714,7 +916,14 @@ uint32_t npe_hci_library_send_command_gymconnect_set_fe_state(wf_gem_hci_gymconn
     
     return(res);
 }
-
+/** @brief Sends set fitness equipment data to the GEM
+ *
+ * @param[out] p_update_response is the response code recieved from the GEM
+ *
+ * @return  ::NPE_GEM_RESPONSE_OK
+ *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
+ *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
+ */
 uint32_t npe_hci_library_send_command_gymconnect_perform_workout_data_update(standard_response_t* p_update_response)
 {
     uint32_t res;
@@ -739,6 +948,9 @@ uint32_t npe_hci_library_send_command_gymconnect_perform_workout_data_update(sta
     
     return(res);
 }
+
+/******************** WF functions defined ************************************************************************************************/
+
 
 void wf_gem_hci_comms_on_send_byte(uint8_t tx_byte)
 {
@@ -799,4 +1011,122 @@ void wf_gem_hci_manager_on_command_response_bluetooth_control_stop_advertising(u
 void wf_gem_hci_manager_on_command_response_bluetooth_config_set_device_name(uint8_t error_code)
 {
     m_last_response.response.error_code = error_code;
+}
+
+
+
+void wf_gem_hci_manager_on_command_response_system_ping(void)
+{
+    printf("wf_gem_hci_manager_on_command_response_system_ping\n");
+}
+
+void wf_gem_hci_manager_on_command_response_system_shutdown(uint8_t error_code)
+{
+printf("wf_gem_hci_manager_on_command_response_system_shutdown\n");
+}
+
+
+
+void wf_gem_hci_manager_on_command_response_system_get_gem_module_version_info(wf_gem_hci_system_gem_module_version_info_t *version_info)
+{
+    printf("wf_gem_hci_manager_on_command_response_system_get_gem_module_version_info\n");
+}
+
+
+void wf_gem_hci_manager_on_command_response_system_reset(uint8_t error_code)
+{
+    printf("wf_gem_hci_manager_on_command_response_system_reset\n");
+}
+
+void wf_gem_hci_manager_on_event_system_powerup(void)
+{
+    printf("wf_gem_hci_manager_on_event_system_powerup\n");
+}
+
+
+void wf_gem_hci_manager_on_event_system_shutdown(void)
+{
+    printf("wf_gem_hci_manager_on_event_system_shutdown\n");
+}
+
+// +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
+// 		Bluetooth Control Command Responses, Events
+// +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
+void wf_gem_hci_manager_on_command_response_bluetooth_control_get_bluetooth_state(wf_gem_hci_bluetooth_state_e bluetooth_state)
+{
+    printf("wf_gem_hci_manager_on_command_response_bluetooth_control_get_bluetooth_state\n");
+}
+
+void wf_gem_hci_manager_on_event_bluetooth_control_advertising_timed_out(void)
+{
+    printf("wf_gem_hci_manager_on_event_bluetooth_control_advertising_timed_out\n");
+    fflush(stdout);
+}
+void wf_gem_hci_manager_on_event_bluetooth_control_connected(void)
+{
+    printf("wf_gem_hci_manager_on_event_bluetooth_control_connected\n");
+}
+void wf_gem_hci_manager_on_event_bluetooth_control_disconnected(bool peripheral_solicited, bool central_solicited)
+{
+    printf("wf_gem_hci_manager_on_event_bluetooth_control_disconnected\n");
+}
+
+
+
+// +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
+// Bluetooth Configuration Command Responses
+// +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
+void wf_gem_hci_manager_on_command_response_bluetooth_config_get_device_name(utf8_data_t* device_name)
+{
+    printf("wf_gem_hci_manager_on_command_response_bluetooth_config_get_device_name\n");
+}
+
+
+
+
+
+void wf_gem_hci_manager_gymconnect_on_command_send_failure(wf_gem_hci_comms_message_t *message)
+{
+    printf("wf_gem_hci_manager_gymconnect_on_command_send_failure\n");
+}
+
+void wf_gem_hci_manager_gymconnect_on_command_response_get_fe_type(wf_gem_hci_gymconnect_fitness_equipment_type_e fe_type)
+{
+    printf("wf_gem_hci_manager_gymconnect_on_command_response_get_fe_type\n");
+}
+void wf_gem_hci_manager_gymconnect_on_command_response_set_fe_type(uint8_t error_code)
+{
+    printf("wf_gem_hci_manager_gymconnect_on_command_response_set_fe_type\n");
+}
+
+void wf_gem_hci_manager_gymconnect_on_command_response_get_fe_state(wf_gem_hci_gymconnect_fitness_equipment_state_e fe_state)
+{
+    printf("wf_gem_hci_manager_gymconnect_on_command_response_get_fe_state\n");
+}
+void wf_gem_hci_manager_gymconnect_on_command_response_set_fe_state(uint8_t error_code)
+{
+    printf("wf_gem_hci_manager_gymconnect_on_command_response_set_fe_state\n");
+}
+
+void wf_gem_hci_manager_gymconnect_on_command_response_get_fe_program_name(utf8_data_t *program_name)
+{
+    printf("wf_gem_hci_manager_gymconnect_on_command_response_get_fe_program_name\n");
+}
+void wf_gem_hci_manager_gymconnect_on_command_response_set_fe_program_name(uint8_t error_code)
+{
+    printf("wf_gem_hci_manager_gymconnect_on_command_response_set_fe_program_name\n");
+}
+
+void wf_gem_hci_manager_gymconnect_on_workout_data_update_complete(uint8_t error_code)
+{
+    //printf("wf_gem_hci_manager_gymconnect_on_workout_data_update_complete\n");
+}
+
+void wf_gem_hci_manager_gymconnecton_event_heart_rate_value_received(uint16_t heart_rate_value)
+{
+    printf("wf_gem_hci_manager_gymconnecton_event_heart_rate_value_received\n");
+}
+void wf_gem_hci_manager_gymconnecton_event_cadence_value_received(uint16_t cadence_value)
+{
+    printf("wf_gem_hci_manager_gymconnecton_event_cadence_value_received\n");
 }
