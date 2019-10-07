@@ -124,7 +124,7 @@ bool npe_serial_transmit_lock(void)
     // then no need to put it on the thread. 
     if(tx_thread_id == pthread_self())
     {
-        pthread_mutex_unlock(&txMutex);
+        //pthread_mutex_unlock(&txMutex);
          return(false);
     }
     pthread_mutex_lock(&txMutex);
@@ -134,7 +134,6 @@ bool npe_serial_transmit_lock(void)
 void npe_serial_transmit_message_and_unlock(void)
 {
     m_tx_event |= NPE_HCI_TX_FLAG_SEND_MSG;
-
     pthread_cond_signal(&txCond);
     pthread_mutex_unlock(&txMutex);
 }
@@ -174,13 +173,10 @@ static void* npe_serial_interface_transmit_thread(void *vargp)
                 
                 pthread_join(retry_timer_thread_id, NULL);
             }
-
-
-
-
         }
-
         pthread_mutex_unlock(&txMutex);
+
+       
     }
         
     return NULL;
@@ -227,6 +223,7 @@ static uint32_t npe_serial_interface_connect_to_port(const char* p_port)
     int err = sp_get_port_by_name(p_port, &port);
     if(err == SP_OK)
     {
+        
         err = sp_open(port, SP_MODE_READ_WRITE);
 
         if(err == SP_OK)
@@ -249,8 +246,15 @@ static uint32_t npe_serial_interface_connect_to_port(const char* p_port)
             err = sp_set_stopbits(port, 1);
             if(err != SP_OK) return NPE_GEM_RESPONSE_SERIAL_CONFIG_FAIL;
 
-            err = sp_set_parity(port, SP_PARITY_NONE);
+            err = sp_set_parity(port, SP_FLOWCONTROL_NONE);
             if(err != SP_OK) return NPE_GEM_RESPONSE_SERIAL_CONFIG_FAIL;
+
+            err = sp_set_dtr(port, SP_DTR_ON);
+            if(err != SP_OK) return NPE_GEM_RESPONSE_SERIAL_CONFIG_FAIL;
+
+            
+
+
         }
         else
         {
@@ -299,6 +303,7 @@ uint32_t npe_serial_interface_wait_for_response(check_if_wait_condition_met_cb_t
         ts.tv_nsec = tv.tv_usec * 1000 + 1000 * 1000 * (timeInMs % 1000);
         ts.tv_sec += ts.tv_nsec / (1000 * 1000 * 1000);
         ts.tv_nsec %= (1000 * 1000 * 1000);
+
         res = pthread_cond_timedwait(&rxCond, &rxMutex, &ts);
 
         if(res == 0)
@@ -325,6 +330,7 @@ uint32_t npe_serial_interface_wait_for_response(check_if_wait_condition_met_cb_t
             
     }
     pthread_mutex_unlock(&rxMutex);
+
     return error_code;
 }
 
