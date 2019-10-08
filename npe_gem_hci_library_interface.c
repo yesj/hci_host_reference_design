@@ -82,9 +82,14 @@ typedef union
         uint32_t serial_number;
     }ant_config_set_serial_number;
     struct {
+        uint16_t ant_plus_device_profile;
+        uint8_t prximity_bin;
+        uint8_t discovery_timeout;
+    }ant_receiver_start_discovery;
+    struct {
         wf_gem_hci_gymconnect_fitness_equipment_type_e fe_type;
     }gymconnect_set_fe_type;
-struct {
+    struct {
         wf_gem_hci_gymconnect_fitness_equipment_state_e fe_state;
     }gymconnect_set_fe_state;
 
@@ -114,6 +119,27 @@ static void npe_gem_hci_library_interface_parse_bytes(uint8_t* byte_buff, int by
     for(int i = 0; i < byte_num;i++)
     {
         wf_gem_hci_comms_process_rx_byte(byte_buff[i]);
+    }
+}
+
+/** @brief Called by TX THREAD. Sends a HCI ANT Config Message to GEM. 
+ *
+ */
+static void npe_hci_library_send_ant_receiver_message(uint8_t message_id)
+{
+    switch(message_id)
+    {
+        case WF_GEM_HCI_COMMAND_ID_ANT_RECEIVER_START_DISCOVERY:
+        {
+            wf_gem_hci_manager_send_command_ant_receiver_start_discovery(messageToSend.args.ant_receiver_start_discovery.ant_plus_device_profile, 
+                messageToSend.args.ant_receiver_start_discovery.prximity_bin, 
+                messageToSend.args.ant_receiver_start_discovery.discovery_timeout);
+            break;
+        }
+        default:
+        {
+            break;
+        }
     }
 }
 
@@ -321,6 +347,10 @@ static void npe_hci_library_send_message(void)
         case WF_GEM_HCI_MSG_CLASS_ANT_CONFIG:
         {
             npe_hci_library_send_ant_config_message(messageToSend.message_id);
+        }
+        case WF_GEM_HCI_MSG_CLASS_ANT_RECEIVER:
+        {
+            npe_hci_library_send_ant_receiver_message(messageToSend.message_id);
         }
         default:
         {
@@ -822,6 +852,43 @@ uint32_t npe_hci_library_send_command_ant_config_set_serial_number(uint32_t seri
     return(res);
 }
 
+/** @brief Start the discovery process for specifed profile.  
+ *
+ * @param[in] serial_number 4 byte unsigned value denoting ANT serial number.
+ * @param[out] p_response is the error code recieved from the GEM
+ *
+ * @return  ::NPE_GEM_RESPONSE_OK
+ *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
+ *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
+ */
+uint32_t npe_hci_library_send_command_ant_receiver_start_discovery(uint16_t ant_plus_profile, uint8_t proximity_bin, uint8_t discovery_timeout, standard_response_t* p_response)
+{
+    bool locked = npe_serial_transmit_lock();
+
+    // TODO - check args for limits!!
+
+    messageToSend.message_class_id = WF_GEM_HCI_MSG_CLASS_ANT_RECEIVER;
+    messageToSend.message_id = WF_GEM_HCI_COMMAND_ID_ANT_RECEIVER_START_DISCOVERY;
+    messageToSend.args.ant_receiver_start_discovery.ant_plus_device_profile = ant_plus_profile;
+    messageToSend.args.ant_receiver_start_discovery.prximity_bin = proximity_bin;
+    messageToSend.args.ant_receiver_start_discovery.discovery_timeout = discovery_timeout;
+    if(locked)
+        npe_serial_transmit_message_and_unlock();
+    else
+        wf_gem_hci_manager_send_command_ant_receiver_start_discovery(messageToSend.args.ant_receiver_start_discovery.ant_plus_device_profile, 
+            messageToSend.args.ant_receiver_start_discovery.prximity_bin, 
+            messageToSend.args.ant_receiver_start_discovery.discovery_timeout);
+          
+    uint32_t res = npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received);
+
+    assert(receivedMessage.message_class_id == WF_GEM_HCI_MSG_CLASS_ANT_RECEIVER);
+    assert(receivedMessage.message_id == WF_GEM_HCI_COMMAND_ID_ANT_RECEIVER_START_DISCOVERY);
+
+    p_response->error_code = m_last_response.response.error_code;
+
+    return(res);
+}
+
 /** @brief Set GEM controllable features
  *
  * @param[in] equipment_control_field_identifier 4 byte unsigned bitfield denoting denoting contollable feautures.
@@ -1129,4 +1196,19 @@ void wf_gem_hci_manager_gymconnecton_event_heart_rate_value_received(uint16_t he
 void wf_gem_hci_manager_gymconnecton_event_cadence_value_received(uint16_t cadence_value)
 {
     printf("wf_gem_hci_manager_gymconnecton_event_cadence_value_received\n");
+}
+
+
+// +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
+// ANT Reciever Cmd and Event handlers.
+// +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
+void wf_gem_hci_manager_on_event_ant_receiver_device_discovered(uint16_t ant_plus_profile_id, uint32_t device_number, int8_t rssi)
+{
+    printf("ANT+ Device Discovered. Profile ID %d, Device Number %d, RSSI %d\n", ant_plus_profile_id, device_number, rssi);
+}
+
+void wf_gem_hci_manager_on_command_response_ant_receiver_start_discovery(uint16_t profile, uint8_t error_code)
+{
+    printf("ANT Dsicovery for device type %d had started.", profile);
+    m_last_response.response.error_code = error_code;
 }

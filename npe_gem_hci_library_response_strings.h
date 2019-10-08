@@ -93,6 +93,10 @@
 #define NPE_GEM_HCI_LIB_GET_GYMCONNECT_WORKOUT_DATA_UPDATE_ERROR_CODE_STR(error_code)  \
         NPE_GEM_HCI_LIB_PROCESS_ERROR_CODE(npe_hci_generic_response_error_code_string, error_code)
 
+#define NPE_GEM_HCI_LIB_ANT_RECEIVER_START_DISCOVERY_ERROR_CODE_STR(error_code)  \
+        NPE_GEM_HCI_LIB_PROCESS_ERROR_CODE(npe_hci_ant_receiver_start_discovery_error_code_string, error_code)
+       
+
 static const char* npe_hci_generic_response_error_code_string[] = {  
         "Success"                                                                            
         }; 
@@ -132,6 +136,30 @@ static const char* npe_hci_gymconnect_set_equipment_control_error_code_string[] 
         "Success",                                                                             
         "Error - BLE Advertising",                                                          
         "Error - BLE Connection Established"
+        }; 
+
+static const char* npe_hci_ant_receiver_start_discovery_error_code_string[] = {  
+        "Success",                                                                             
+        "Invalid/Unsupported ANT+ Receiver Profile specified",
+        "UNKNOWN 2",              
+        "UNKNOWN 3",                                                   
+        "UNKNOWN 4",  
+        "UNKNOWN 5",  
+        "UNKNOWN 6",
+        "UNKNOWN 7",
+        "UNKNOWN 8",
+        "UNKNOWN 9",
+        "UNKNOWN 10",
+        "UNKNOWN 11",
+        "UNKNOWN 12",
+        "UNKNOWN 13",
+        "UNKNOWN 14",
+        "UNKNOWN 15",
+        "UNKNOWN 16",
+        "UNKNOWN 17",
+        "UNKNOWN 18",
+        "UNKNOWN 19",
+        "Unable to begin discovery process"
         }; 
 
 #endif

@@ -58,6 +58,7 @@ void print_help(void)
 'f' - goto FINISHED\n\
 '+' - increase grade\n\
 '-' - decrease grade\n\
+'d' - start ANT HRM discovery\n\
 'q' - quit\n\
 \n************************************************* \n");
 }
@@ -134,7 +135,7 @@ int main(int argc, char *argv[])
     while(waitForPingResponse) 
     {
         sleep(1);
-        printf("Send Ping\n"); fflush(stdout);
+
         err = npe_hci_library_send_ping();
 
         if(err == NPE_GEM_RESPONSE_OK)
@@ -302,6 +303,15 @@ int main(int argc, char *argv[])
             {
                 print_help();
                 break;
+            }
+            case 'd':
+            case 'D':
+            {
+                // Start ANT+ discovery
+                err =  npe_hci_library_send_command_ant_receiver_start_discovery(120, 0, 30, &response_code);
+                assert(err == NPE_GEM_RESPONSE_OK);
+                NPE_GEM_HCI_LIB_PRINT_IF_ERROR(response_code.error_code, NPE_GEM_HCI_LIB_ANT_RECEIVER_START_DISCOVERY_ERROR_CODE_STR(response_code.error_code));
+                break;    
             }
             default:
             {           

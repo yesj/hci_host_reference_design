@@ -178,6 +178,7 @@ uint32_t npe_hci_library_send_command_ant_config_set_software_version(uint8_t ma
  *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
  */
 uint32_t npe_hci_library_send_command_ant_config_set_serial_number(uint32_t serial_number, standard_response_t* p_response);
+uint32_t npe_hci_library_send_command_ant_receiver_start_discovery(uint16_t ant_plus_profile, uint8_t proximity_bin, uint8_t discovery_timeout, standard_response_t* p_response);
 
 /** @brief Set GEM controllable features
  *
