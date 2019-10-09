@@ -208,6 +208,22 @@ int main(int argc, char *argv[])
     assert(err == NPE_GEM_RESPONSE_OK);
     NPE_GEM_HCI_LIB_PRINT_IF_ERROR(response_code.error_code, NPE_GEM_HCI_LIB_GET_BT_CONTRL_ADV_START_ERROR_CODE_STR(response_code.error_code));
 
+
+    err = npe_hci_library_send_command_hardware_get_pin(&response_code);
+    assert(err == NPE_GEM_RESPONSE_OK);
+    printf("Number of pins configured: %d\n", response_code.args.hw_get_pins.number_of_pins );
+
+    for(int i = 0; i < response_code.args.hw_get_pins.number_of_pins; i++)
+    {
+        printf("Pin %d, Mode %x\n", response_code.args.hw_get_pins.pin_config[i].pin_number, response_code.args.hw_get_pins.pin_config[i].pin_io_mode);
+    }
+
+    npe_hci_pin_t pins[1] = {{2, 0x10}}; // Set pin 2 to be adv status output
+
+    err = npe_hci_library_send_command_hardware_set_pin(1, pins, &response_code);
+    assert(err == NPE_GEM_RESPONSE_OK);
+    NPE_GEM_HCI_LIB_PRINT_IF_ERROR(response_code.error_code, NPE_GEM_HCI_LIB_HW_SET_PINS_ERROR_CODE_STR(response_code.error_code));
+
     // Send initial data
     send_data_to_gem();
 

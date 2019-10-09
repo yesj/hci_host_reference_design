@@ -22,15 +22,39 @@
 
 #include "wf_gem_hci_manager_gymconnect.h"
 
+#define MAX_PINS_ALLOWED        ((uint8_t) 32)
+
 // Callback function - call @ 1Hz to allow application
 // to provide fitness equipment data to the GEM
 typedef void (*one_second_timeout_t)(void);
 
 // Standard response to GEM HCI messages. 
-typedef struct npe_gem_hci_library_interface
+// typedef struct npe_gem_hci_library_interface
+// {
+//     uint8_t error_code;
+// }standard_response_t;
+
+/** @brief Format of respnse from GEM 
+ *
+ */
+// For pin set/get messages
+typedef struct {
+    uint8_t pin_number;
+    uint8_t pin_io_mode;
+}npe_hci_pin_t;
+
+typedef struct 
 {
     uint8_t error_code;
-}standard_response_t;
+    union {
+        struct{
+            uint8_t number_of_pins;
+            npe_hci_pin_t pin_config[MAX_PINS_ALLOWED]; 
+        } hw_get_pins;
+    }args;
+    
+} standard_response_t;
+
 
 
 /** @brief Initializes the NPE GEM HCI library and serial interface.
@@ -52,6 +76,15 @@ uint32_t npe_gem_hci_library_interface_init(const char* p_comport, one_second_ti
  *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
  */
 uint32_t npe_hci_library_send_ping(void);
+
+/** @brief Send Get Pin Configuration command to GEM.
+ *
+ * @return  ::NPE_GEM_RESPONSE_OK
+ *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
+ *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
+ */
+uint32_t npe_hci_library_send_command_hardware_get_pin(standard_response_t* p_response);
+uint32_t npe_hci_library_send_command_hardware_set_pin(uint8_t number_of_pins, npe_hci_pin_t p_pin_settings[], standard_response_t* p_set_device_name_response);
 
 /** @brief Send the Bluetooth Device Name to the GEM.
  *

@@ -42,6 +42,9 @@
                 : \
                 npe_hci_common_unknown_error_code_string[error_code]
 
+#define NPE_GEM_HCI_LIB_HW_SET_PINS_ERROR_CODE_STR(error_code)  \
+        NPE_GEM_HCI_LIB_PROCESS_ERROR_CODE(npe_hci_hardware_set_pins_error_code_string, error_code)
+
 #define NPE_GEM_HCI_LIB_GET_BT_CONTRL_ADV_START_ERROR_CODE_STR(error_code)  \
         NPE_GEM_HCI_LIB_PROCESS_ERROR_CODE(npe_hci_bluetooth_control_start_advertising_response_error_code_string, error_code)
         
@@ -97,6 +100,7 @@
         NPE_GEM_HCI_LIB_PROCESS_ERROR_CODE(npe_hci_ant_receiver_start_discovery_error_code_string, error_code)
        
 
+
 static const char* npe_hci_generic_response_error_code_string[] = {  
         "Success"                                                                            
         }; 
@@ -104,6 +108,13 @@ static const char* npe_hci_generic_response_error_code_string[] = {
 static const char* npe_hci_string_response_error_code_string[] = {  
         "Success",                                                                             
         "Full Device Name will not fit, it has been truncated"
+        }; 
+
+
+static const char* npe_hci_hardware_set_pins_error_code_string[] = {  
+        "Success",                                                                             
+        "One or more invalid pin numbers were supplied",
+        "One or more invalid Pin IO Modes were supplied"
         }; 
 
 static const char* npe_hci_bluetooth_control_start_advertising_response_error_code_string[] = {  
