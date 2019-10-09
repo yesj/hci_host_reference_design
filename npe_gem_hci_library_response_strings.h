@@ -27,7 +27,7 @@
 #define NPE_GEM_HCI_LIB_PRINT_IF_ERROR(response_code, string_to_print)  \
         do                                                              \
         {                                                               \
-                if(response_code != 0) printf("%s", string_to_print);   \
+                if(response_code != 0) printf("Response Code %d %s", response_code, string_to_print);   \
                 fflush(stdout);                                         \
         } while(0)
 
@@ -38,9 +38,9 @@
                 specific_error_array[error_code] \
                 : \
                 error_code < NPE_GEM_HCI_COMMON_UNKNOWN_ERROR_BASE ? \
-                npe_hci_common_error_code_string[error_code] \
+                npe_hci_common_error_code_string[error_code-NPE_GEM_HCI_COMMON_ERROR_BASE] \
                 : \
-                npe_hci_common_unknown_error_code_string[error_code]
+                npe_hci_common_unknown_error_code_string[error_code-NPE_GEM_HCI_COMMON_UNKNOWN_ERROR_BASE]
 
 #define NPE_GEM_HCI_LIB_HW_SET_PINS_ERROR_CODE_STR(error_code)  \
         NPE_GEM_HCI_LIB_PROCESS_ERROR_CODE(npe_hci_hardware_set_pins_error_code_string, error_code)

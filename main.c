@@ -85,7 +85,6 @@ void send_data_to_gem(void)
         uint32_t res = npe_hci_library_send_command_gymconnect_perform_workout_data_update(&response);
         assert(res == NPE_GEM_RESPONSE_OK);
         NPE_GEM_HCI_LIB_PRINT_IF_ERROR(response.error_code, NPE_GEM_HCI_LIB_GET_GYMCONNECT_WORKOUT_DATA_UPDATE_ERROR_CODE_STR(response.error_code));
-
     }
 }
 
@@ -148,11 +147,11 @@ int main(int argc, char *argv[])
     }
 
     // Set Bluetooth name. 
-    err = npe_hci_library_send_command_bluetooth_config_set_device_name("GEM Reference Design", &response_code);
+    err = npe_hci_library_send_command_bluetooth_config_set_device_name("GEM3 Reference Design", &response_code);
     assert(err == NPE_GEM_RESPONSE_OK);
     NPE_GEM_HCI_LIB_PRINT_IF_ERROR(response_code.error_code, NPE_GEM_HCI_LIB_GET_BT_CONFIG_SET_DEVICE_NAME_ERROR_CODE_STR(response_code.error_code));
             
-    err = npe_hci_library_send_command_bluetooth_info_set_manufacturer_name("North Pole Engineering", &response_code);
+    err = npe_hci_library_send_command_bluetooth_info_set_manufacturer_name("NopNorth Pole Engineering", &response_code);
     assert(err == NPE_GEM_RESPONSE_OK);
     NPE_GEM_HCI_LIB_PRINT_IF_ERROR(response_code.error_code, NPE_GEM_HCI_LIB_GET_BT_INFO_SET_MANUFACTURER_NAME_ERROR_CODE_STR(response_code.error_code));
 
@@ -160,15 +159,15 @@ int main(int argc, char *argv[])
     assert(err == NPE_GEM_RESPONSE_OK);
     NPE_GEM_HCI_LIB_PRINT_IF_ERROR(response_code.error_code, NPE_GEM_HCI_LIB_GET_BT_INFO_SET_MODEL_NUMBER_ERROR_CODE_STR(response_code.error_code));
 
-    err = npe_hci_library_send_command_bluetooth_info_set_serial_number("1234", &response_code);
+    err = npe_hci_library_send_command_bluetooth_info_set_serial_number("0234", &response_code);
     assert(err == NPE_GEM_RESPONSE_OK);
     NPE_GEM_HCI_LIB_PRINT_IF_ERROR(response_code.error_code, NPE_GEM_HCI_LIB_GET_BT_INFO_SET_SERIAL_NUMBER_ERROR_CODE_STR(response_code.error_code));
 
-    err = npe_hci_library_send_command_bluetooth_info_set_hardware_rev("1", &response_code);
+    err = npe_hci_library_send_command_bluetooth_info_set_hardware_rev("2", &response_code);
     assert(err == NPE_GEM_RESPONSE_OK);
     NPE_GEM_HCI_LIB_PRINT_IF_ERROR(response_code.error_code, NPE_GEM_HCI_LIB_GET_BT_INFO_SET_HARDWARE_REVISION_ERROR_CODE_STR(response_code.error_code));
 
-    err = npe_hci_library_send_command_bluetooth_info_set_firmware_rev("2", &response_code);
+    err = npe_hci_library_send_command_bluetooth_info_set_firmware_rev("3", &response_code);
     assert(err == NPE_GEM_RESPONSE_OK);
     NPE_GEM_HCI_LIB_PRINT_IF_ERROR(response_code.error_code, NPE_GEM_HCI_LIB_GET_BT_INFO_SET_FIRMWARE_REVISION_ERROR_CODE_STR(response_code.error_code));
 
@@ -208,7 +207,8 @@ int main(int argc, char *argv[])
     assert(err == NPE_GEM_RESPONSE_OK);
     NPE_GEM_HCI_LIB_PRINT_IF_ERROR(response_code.error_code, NPE_GEM_HCI_LIB_GET_BT_CONTRL_ADV_START_ERROR_CODE_STR(response_code.error_code));
 
-
+//#define DO_HW_PINS
+#if defined(DO_HW_PINS)
     err = npe_hci_library_send_command_hardware_get_pin(&response_code);
     assert(err == NPE_GEM_RESPONSE_OK);
     printf("Number of pins configured: %d\n", response_code.args.hw_get_pins.number_of_pins );
@@ -218,11 +218,12 @@ int main(int argc, char *argv[])
         printf("Pin %d, Mode %x\n", response_code.args.hw_get_pins.pin_config[i].pin_number, response_code.args.hw_get_pins.pin_config[i].pin_io_mode);
     }
 
-    npe_hci_pin_t pins[1] = {{2, 0x10}}; // Set pin 2 to be adv status output
+    npe_hci_pin_t pins[2] = {{3, 0x12}, {5, 0x11}}; // Set pin 2 to be bt adv status output, 3 as bt connected status output
 
-    err = npe_hci_library_send_command_hardware_set_pin(1, pins, &response_code);
-    assert(err == NPE_GEM_RESPONSE_OK);
+    err = npe_hci_library_send_command_hardware_set_pin(sizeof(pins)/sizeof(npe_hci_pin_t), pins, &response_code);
+    assert(err == NPE_GEM_RESPONSE_OK); 
     NPE_GEM_HCI_LIB_PRINT_IF_ERROR(response_code.error_code, NPE_GEM_HCI_LIB_HW_SET_PINS_ERROR_CODE_STR(response_code.error_code));
+#endif
 
     // Send initial data
     send_data_to_gem();

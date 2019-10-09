@@ -487,6 +487,7 @@ uint32_t npe_hci_library_send_ping(void)
  */
 uint32_t npe_hci_library_send_command_hardware_set_pin(uint8_t number_of_pins, npe_hci_pin_t p_pin_settings[], standard_response_t* p_set_device_name_response)
 {
+    int j = 0;
     if(number_of_pins > MAX_PINS_ALLOWED || number_of_pins == 0)
         return(NPE_GEM_RESPONSE_INVALID_PARAMETER);
     
@@ -499,8 +500,10 @@ uint32_t npe_hci_library_send_command_hardware_set_pin(uint8_t number_of_pins, n
 
     for(int i = 0; i < (2*number_of_pins-1); i += 2)
     {
-        messageToSend.args.hw_set_pins.pins[i] = p_pin_settings[i].pin_number;
-        messageToSend.args.hw_set_pins.pins[i+1] = p_pin_settings[i].pin_io_mode;
+       
+        messageToSend.args.hw_set_pins.pins[i] = p_pin_settings[j].pin_number;
+        messageToSend.args.hw_set_pins.pins[i+1] = p_pin_settings[j].pin_io_mode;
+        j++;
     }
 
     // Start send message then wait for response.
@@ -1193,6 +1196,7 @@ void wf_gem_hci_comms_on_message_received(wf_gem_hci_comms_message_t* message)
 
 void wf_gem_hci_manager_on_begin_retry_timer(uint16_t cmd_timeout_ms)
 {
+
     npe_serial_interface_start_retry_timer(cmd_timeout_ms);
 }
 
@@ -1368,6 +1372,6 @@ void wf_gem_hci_manager_on_event_ant_receiver_device_discovered(uint16_t ant_plu
 
 void wf_gem_hci_manager_on_command_response_ant_receiver_start_discovery(uint16_t profile, uint8_t error_code)
 {
-    printf("ANT Discovery for device type %d had started.", profile);
+    printf("ANT Discovery for device type %d has started.", profile);
     m_last_response.error_code = error_code;
 }

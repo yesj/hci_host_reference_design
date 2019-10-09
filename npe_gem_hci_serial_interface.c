@@ -148,8 +148,7 @@ static void* npe_serial_interface_transmit_thread(void *vargp)
                 m_tx_event &= ~NPE_HCI_TX_FLAG_RETRY;
                 if(m_callback.retry_timeout_cb)
                     m_callback.retry_timeout_cb();
-                
-                pthread_join(retry_timer_thread_id, NULL);
+
             }
         }
         pthread_mutex_unlock(&txMutex);
@@ -440,15 +439,14 @@ uint32_t npe_serial_interface_wait_for_response(check_if_wait_condition_met_cb_t
 
     uint32_t error_code = NPE_GEM_RESPONSE_RETRIES_EXHAUSTED;
     uint8_t waitCount = 10; // Wait a maximum 10 times to get the correct response. 
-    int timeInMs = (WF_GEM_HCI_DEFAULT_MAX_COMMAND_RETRY_ATTEMPTS+1) * WF_GEM_HCI_DEFAULT_COMMAND_TIMEOUT_MS + 50;
+    int timeInMs = (WF_GEM_HCI_DEFAULT_MAX_COMMAND_RETRY_ATTEMPTS+1) * WF_GEM_HCI_LONG_COMMAND_TIMEOUT_MS + 50;
     struct timeval tv;
     struct timespec ts;
     int res;
 
     
 
-    // TODO: Time out.
-    pthread_mutex_lock(&rxMutex);
+
     
     // Check if this is the response we are watining for 
     while(waitCount-- > 0)
@@ -459,11 +457,12 @@ uint32_t npe_serial_interface_wait_for_response(check_if_wait_condition_met_cb_t
         ts.tv_sec += ts.tv_nsec / (1000 * 1000 * 1000);
         ts.tv_nsec %= (1000 * 1000 * 1000);
 
+        pthread_mutex_lock(&rxMutex);
         res = pthread_cond_timedwait(&rxCond, &rxMutex, &ts);
-
+        
         if(res == 0)
         {
-            error_code = NPE_GEM_RESPONSE_OK;
+             error_code = NPE_GEM_RESPONSE_OK;
         }
         else if(res == ETIMEDOUT)
         {
@@ -478,13 +477,15 @@ uint32_t npe_serial_interface_wait_for_response(check_if_wait_condition_met_cb_t
         if(check_if_wait_condition_met_cb)
         {
             if(check_if_wait_condition_met_cb())
-            {       
+            {   
+                pthread_mutex_unlock(&rxMutex);
                 break;
             }
         }
+        pthread_mutex_unlock(&rxMutex);
             
     }
-    pthread_mutex_unlock(&rxMutex);
+    
 
     return error_code;
 }
