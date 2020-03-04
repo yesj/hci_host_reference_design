@@ -43,6 +43,9 @@ typedef struct {
     uint8_t pin_io_mode;
 }npe_hci_pin_t;
 
+
+
+
 typedef struct 
 {
     uint8_t error_code;
@@ -51,6 +54,8 @@ typedef struct
             uint8_t number_of_pins;
             npe_hci_pin_t pin_config[MAX_PINS_ALLOWED]; 
         } hw_get_pins;
+        wf_gem_hci_system_gem_module_version_info_t gem_version;
+
     }args;
     
 } standard_response_t;
@@ -76,6 +81,14 @@ uint32_t npe_gem_hci_library_interface_init(const char* p_comport, one_second_ti
  *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
  */
 uint32_t npe_hci_library_send_ping(void);
+
+/** @brief Send Get Version command to the GEM
+ *
+ * @return  ::NPE_GEM_RESPONSE_OK
+ *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
+ *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
+ */
+uint32_t npe_hci_library_send_command_system_get_version(standard_response_t* p_response);
 
 /** @brief Send Get Pin Configuration command to GEM.
  *

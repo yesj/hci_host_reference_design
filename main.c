@@ -50,6 +50,7 @@ void print_help(void)
 {
     printf("\n\n******* NPE GEM Host Reference Design ********** \n\n\
 'h' - help (this menu)\n\
+'v' - get version\n\
 'a' - start advertising\n\
 's' - stop advertising\n\
 'i' - goto IDLE\n\
@@ -133,6 +134,7 @@ int main(int argc, char *argv[])
     // Keep sending Ping message until we get a response. 
     while(waitForPingResponse) 
     {
+        printf("Ping\n"); fflush(stdout);
         sleep(1);
 
         err = npe_hci_library_send_ping();
@@ -238,6 +240,28 @@ int main(int argc, char *argv[])
         input_char = getchar();
         switch(input_char)
         {
+
+            case 'v':
+            case 'V':
+            {
+                // Request the version
+                err = npe_hci_library_send_command_system_get_version(&response_code);
+                assert(err == NPE_GEM_RESPONSE_OK);
+
+
+                printf("Vendor ID: 0x%04x\n", response_code.args.gem_version.vendor_id);
+                printf("Product ID: 0x%04x\n", response_code.args.gem_version.product_id);
+                printf("HW Version ID: %d\n", response_code.args.gem_version.hw_version);
+                printf("Firmware Version: %d.%d.%d\n", response_code.args.gem_version.fw_version_major, response_code.args.gem_version.fw_version_minor, response_code.args.gem_version.fw_version_build);
+                printf("Firmware Simple: %d\n", response_code.args.gem_version.fw_version_simple);
+                printf("Bootloader Version: %d\n", response_code.args.gem_version.bl_version_major);
+                printf("Bootloader Revision:%d\n", response_code.args.gem_version.bl_version_revision);
+                printf("Bootloader Vendor: 0x%04x\n", response_code.args.gem_version.bl_version_vendor);
+                printf("Bootloader Device Variant: %d\n", response_code.args.gem_version.bl_version_device_variant);
+
+                //NPE_GEM_HCI_LIB_PRINT_IF_ERROR(response_code.error_code, NPE_GEM_HCI_LIB_GET_BT_CONTRL_ADV_START_ERROR_CODE_STR(response_code.error_code));
+                break;            
+            }
             case 'a':
             case 'A':
             {

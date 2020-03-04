@@ -304,6 +304,11 @@ static void npe_hci_library_send_system_message(uint8_t message_id)
             wf_gem_hci_manager_send_command_sytem_ping();
             break;
         }
+        case WF_GEM_HCI_COMMAND_ID_SYSTEM_GET_GEM_MODULE_VERSION_INFO:
+        {
+            wf_gem_hci_manager_send_command_sytem_get_gem_module_version_information();
+            break;
+        }
     }
 }
 
@@ -560,7 +565,40 @@ uint32_t npe_hci_library_send_command_hardware_get_pin(standard_response_t* p_re
     return(res);
 }
 
+/** @brief Send Get Version command to the GEM
+ *
+ * @return  ::NPE_GEM_RESPONSE_OK
+ *          ::NPE_GEM_RESPONSE_RETRIES_EXHAUSTED
+ *          ::NPE_GEM_RESPONSE_TIMEOUT_OUT
+ */
+uint32_t npe_hci_library_send_command_system_get_version(standard_response_t* p_response)
+{
+   
+    // Check if we are on a different thread. Lock if we are.
+    bool locked = npe_serial_transmit_lock();
 
+    messageToSend.message_class_id = WF_GEM_HCI_MSG_CLASS_SYSTEM;
+    messageToSend.message_id = WF_GEM_HCI_COMMAND_ID_SYSTEM_GET_GEM_MODULE_VERSION_INFO;
+
+
+    // Start send message then wait for response.
+    if(locked) 
+        npe_serial_transmit_message_and_unlock();
+    else
+        wf_gem_hci_manager_send_command_sytem_get_gem_module_version_information(); 
+
+
+    uint32_t res = npe_serial_interface_wait_for_response(npe_gem_library_check_if_response_received);
+    if(res == NPE_GEM_RESPONSE_OK)
+    {
+        assert(receivedMessage.message_class_id == WF_GEM_HCI_MSG_CLASS_SYSTEM);
+        assert(receivedMessage.message_id == WF_GEM_HCI_COMMAND_ID_SYSTEM_GET_GEM_MODULE_VERSION_INFO);
+        memcpy(p_response, &m_last_response,sizeof(standard_response_t));
+    }
+    
+
+    return(res);
+}
 
 
 /** @brief Send the Bluetooth Device Name to the GEM.
@@ -1242,7 +1280,7 @@ void wf_gem_hci_manager_on_command_response_bluetooth_control_stop_advertising(u
     
 }
 
-void wf_gem_hci_manager_on_command_response_bluetooth_config_set_device_name(uint8_t error_code)
+void wf_gem_hci_manager_on_command_response_bluetooth_config_set_device_name    (uint8_t error_code)
 {
     m_last_response.error_code = error_code;
 }
@@ -1256,13 +1294,17 @@ void wf_gem_hci_manager_on_command_response_system_ping(void)
 
 void wf_gem_hci_manager_on_command_response_system_shutdown(uint8_t error_code)
 {
-printf("wf_gem_hci_manager_on_command_response_system_shutdown\n");
+    printf("wf_gem_hci_manager_on_command_response_system_shutdown\n");
 }
 
 
 
 void wf_gem_hci_manager_on_command_response_system_get_gem_module_version_info(wf_gem_hci_system_gem_module_version_info_t *version_info)
 {
+    m_last_response.error_code = 0;
+    memcpy(&m_last_response.args.gem_version, version_info, sizeof(wf_gem_hci_system_gem_module_version_info_t));
+
+
     printf("wf_gem_hci_manager_on_command_response_system_get_gem_module_version_info\n");
 }
 
